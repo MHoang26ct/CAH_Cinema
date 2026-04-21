@@ -1,3 +1,22 @@
 <resources>
     <string name="app_name">CAH_Cinema</string>
+    <string name="login_title">Đăng nhập</string>
+    <string name="email_label">Email</string>
+    <string name="password_label">Mật khẩu</string>
+    <string name="forgot_password_prompt">Quên mật khẩu?</string>
+    <string name="click_here">Nhấn vào đây</string>
+    <string name="no_account_prompt">Bạn chưa có tài khoản ?</string>
+    <string name="register_label">Đăng ký</string>
+    <string name="email_placeholder">example@gmail.com</string>
+    <string name="password_placeholder">••••••••••••</string>
+
+    <string name="register_title">Đăng ký tài\nkhoản</string>
+    <string name="username_label">Tên đăng nhập</string>
+    <string name="confirm_password_label">Nhập lại mật khẩu</string>
+    <string name="already_have_account">Đã có tài khoản ?</string>
+    <string name="username_placeholder">example</string>
+
+    <string name="forgot_password_title">Quên mật\nkhẩu</string>
+    <string name="forgot_password_desc">Hãy điền gmail bạn đã dùng để đăng ký tài khoản. Chúng tôi sẽ gửi lại mật khẩu mới vào hộp thư cho bạn</string>
+    <string name="get_new_password_label">Nhận mật khẩu mới</string>
 </resources>
