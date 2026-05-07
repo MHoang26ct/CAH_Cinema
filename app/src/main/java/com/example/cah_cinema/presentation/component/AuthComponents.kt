@@ -1,4 +1,4 @@
-package com.example.cah_cinema.presentation.auth
+package com.example.cah_cinema.presentation.component
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer

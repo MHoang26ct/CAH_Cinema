@@ -29,7 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cah_cinema.R
-import com.example.cah_cinema.presentation.auth.AuthTextField
+import com.example.cah_cinema.presentation.component.AuthTextField
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
 
