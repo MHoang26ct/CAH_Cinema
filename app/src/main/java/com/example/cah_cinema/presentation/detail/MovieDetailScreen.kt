@@ -39,7 +39,8 @@ import com.example.cah_cinema.ui.theme.TextGray
 @Composable
 fun MovieDetailScreen(
     viewModel: MovieDetailViewModel = viewModel(),
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onShowtimeClick: (String, String) -> Unit = { _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -68,7 +69,12 @@ fun MovieDetailScreen(
                 }
 
                 items(state.cinemas) { cinema ->
-                    CinemaSection(cinema = cinema)
+                    CinemaSection(
+                        cinema = cinema,
+                        onShowtimeClick = { showtimeId ->
+                            onShowtimeClick(movie.id, showtimeId)
+                        }
+                    )
                 }
 
                 item {
@@ -277,7 +283,10 @@ fun DateSelectionSection(dates: List<MovieDate>, onDateSelected: (MovieDate) -> 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CinemaSection(cinema: Cinema) {
+fun CinemaSection(
+    cinema: Cinema,
+    onShowtimeClick: (String) -> Unit
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -307,6 +316,7 @@ fun CinemaSection(cinema: Cinema) {
                     Box(
                         modifier = Modifier
                             .border(1.dp, CyanBlue, RoundedCornerShape(8.dp))
+                            .clickable { onShowtimeClick(showtime.id) }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         Text(

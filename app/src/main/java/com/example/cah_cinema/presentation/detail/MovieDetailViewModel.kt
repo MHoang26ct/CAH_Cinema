@@ -86,7 +86,7 @@ class MovieDetailViewModel(
     }
 
     private fun loadMovieDetail() {
-        val movie = mockMovies[movieId] ?: mockMovies["hen_em_ngay_nhat_thuc"]
+        val movie = mockMovies[movieId]
 
         val mockDates = listOf(
             MovieDate("Hôm nay", "06/04", true),
