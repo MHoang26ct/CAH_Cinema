@@ -26,6 +26,12 @@ import com.example.cah_cinema.ui.theme.CyanBlue
 import java.text.NumberFormat
 import java.util.*
 
+fun formatPrice(price: Double): String {
+    // Sử dụng Locale.US để hiển thị dấu phẩy ngăn cách phần nghìn giống như trong thiết kế mẫu
+    val formatter = NumberFormat.getInstance(Locale.US)
+    return "${formatter.format(price)} đ"
+}
+
 @Composable
 fun TicketTopBar(
     title: String,
@@ -68,8 +74,8 @@ fun TicketTopBar(
                 if (tag.isNotEmpty()) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (tag == "T16" || tag == "T13" || tag.startsWith("T")) Color(0xFFFFAA00) else Color.Transparent,
-                        border = if (!tag.startsWith("T")) BorderStroke(1.dp, CyanBlue) else null
+                        color = if (tag.startsWith("T") || tag == "P") Color(0xFFFFAA00) else Color.Transparent,
+                        border = if (!tag.startsWith("T") && tag != "P") BorderStroke(1.dp, CyanBlue) else null
                     ) {
                         Text(
                             text = tag,
@@ -251,7 +257,7 @@ fun BookingBottomBar(
                 Text(
                     text = "Tổng cộng: ${formatPrice(totalAmount)}",
                     color = Color.White,
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
             }
@@ -261,22 +267,17 @@ fun BookingBottomBar(
                 colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
-                    .height(54.dp)
-                    .width(130.dp),
+                    .height(50.dp)
+                    .width(150.dp),
                 enabled = totalTickets > 0
             ) {
                 Text(
-                    text = buttonText.uppercase(), 
+                    text = buttonText, 
                     color = Color.Black, 
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = 16.sp
                 )
             }
         }
     }
-}
-
-fun formatPrice(price: Double): String {
-    val formatter = NumberFormat.getInstance(Locale.forLanguageTag("vi-VN"))
-    return "${formatter.format(price)} đ"
 }

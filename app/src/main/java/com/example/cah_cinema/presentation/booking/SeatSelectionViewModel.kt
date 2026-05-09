@@ -34,6 +34,8 @@ class SeatSelectionViewModel(
 
     private val movieId: String? = savedStateHandle["movieId"]
     private val showtimeId: String? = savedStateHandle["showtimeId"]
+    private val dateArg: String = savedStateHandle["date"] ?: "06/04"
+    private val timeArg: String = savedStateHandle["time"] ?: "18:20"
     private val regularCount: Int = savedStateHandle.get<Int>("regularCount") ?: 0
     private val coupleCount: Int = savedStateHandle.get<Int>("coupleCount") ?: 0
     private val basePrice: Long = savedStateHandle.get<Long>("basePrice") ?: 0L
@@ -96,8 +98,8 @@ class SeatSelectionViewModel(
                 movie = mockMovie,
                 selectedCinemaName = "Cinestar Quốc Thanh (TP.HCM)",
                 selectedRoom = "Phòng: 03",
-                selectedShowtime = "18:20",
-                selectedDate = "06/04",
+                selectedShowtime = timeArg,
+                selectedDate = dateArg,
                 seats = mockSeats
             )
         }

@@ -28,6 +28,8 @@ class TicketSelectionViewModel(
 
     private val movieId: String? = savedStateHandle["movieId"]
     private val showtimeId: String? = savedStateHandle["showtimeId"]
+    private val dateArg: String = savedStateHandle["date"] ?: "06/04"
+    private val timeArg: String = savedStateHandle["time"] ?: "18:20"
 
     init {
         loadBookingDetails()
@@ -58,9 +60,9 @@ class TicketSelectionViewModel(
                 movie = mockMovie,
                 selectedCinemaName = "Cinestar Quốc Thanh (TP.HCM)",
                 selectedRoom = "Phòng: 03",
-                selectedShowtime = "18:20",
+                selectedShowtime = timeArg,
                 availableShowtimes = mockShowtimes,
-                selectedDate = "06/04",
+                selectedDate = dateArg,
                 ticketTypes = mockTicketTypes
             )
         }

@@ -16,6 +16,8 @@ import androidx.navigation.navArgument
 import com.example.cah_cinema.presentation.auth.ForgotPassword.ForgotPasswordScreen
 import com.example.cah_cinema.presentation.auth.login.LoginScreen
 import com.example.cah_cinema.presentation.auth.register.RegisterScreen
+import com.example.cah_cinema.presentation.booking.ConcessionScreen
+import com.example.cah_cinema.presentation.booking.PaymentScreen
 import com.example.cah_cinema.presentation.booking.SeatSelectionScreen
 import com.example.cah_cinema.presentation.booking.TicketSelectionScreen
 import com.example.cah_cinema.presentation.detail.MovieDetailScreen
@@ -87,17 +89,20 @@ class MainActivity : ComponentActivity() {
                                 onBackClick = {
                                     navController.popBackStack()
                                 },
-                                onShowtimeClick = { movieId, showtimeId ->
-                                    navController.navigate("booking/$movieId/$showtimeId")
+                                onShowtimeClick = { movieId, showtimeId, date, time ->
+                                    val encodedDate = date.replace("/", "-")
+                                    navController.navigate("booking/$movieId/$showtimeId/$encodedDate/$time")
                                 }
                             )
                         }
 
                         composable(
-                            route = "booking/{movieId}/{showtimeId}",
+                            route = "booking/{movieId}/{showtimeId}/{date}/{time}",
                             arguments = listOf(
                                 navArgument("movieId") { type = NavType.StringType },
-                                navArgument("showtimeId") { type = NavType.StringType }
+                                navArgument("showtimeId") { type = NavType.StringType },
+                                navArgument("date") { type = NavType.StringType },
+                                navArgument("time") { type = NavType.StringType }
                             )
                         ) { entry ->
                             TicketSelectionScreen(
@@ -107,27 +112,76 @@ class MainActivity : ComponentActivity() {
                                 onBookClick = { regularCount, coupleCount, basePrice ->
                                     val movieId = entry.arguments?.getString("movieId") ?: ""
                                     val showtimeId = entry.arguments?.getString("showtimeId") ?: ""
-                                    navController.navigate("seat_selection/$movieId/$showtimeId/$regularCount/$coupleCount/${basePrice.toLong()}")
+                                    val date = entry.arguments?.getString("date") ?: ""
+                                    val time = entry.arguments?.getString("time") ?: ""
+                                    navController.navigate("seat_selection/$movieId/$showtimeId/$date/$time/$regularCount/$coupleCount/${basePrice.toLong()}")
                                 }
                             )
                         }
 
                         composable(
-                            route = "seat_selection/{movieId}/{showtimeId}/{regularCount}/{coupleCount}/{basePrice}",
+                            route = "seat_selection/{movieId}/{showtimeId}/{date}/{time}/{regularCount}/{coupleCount}/{basePrice}",
                             arguments = listOf(
                                 navArgument("movieId") { type = NavType.StringType },
                                 navArgument("showtimeId") { type = NavType.StringType },
+                                navArgument("date") { type = NavType.StringType },
+                                navArgument("time") { type = NavType.StringType },
                                 navArgument("regularCount") { type = NavType.IntType },
                                 navArgument("coupleCount") { type = NavType.IntType },
                                 navArgument("basePrice") { type = NavType.LongType }
                             )
-                        ) {
+                        ) { entry ->
+                            val date = entry.arguments?.getString("date") ?: ""
+                            val time = entry.arguments?.getString("time") ?: ""
                             SeatSelectionScreen(
                                 onBackClick = {
                                     navController.popBackStack()
                                 },
-                                onConfirmClick = {
-                                    // Tiếp tục thanh toán
+                                onConfirmClick = { seats, totalAmount ->
+                                    navController.navigate("concession/$seats/$totalAmount/$date/$time")
+                                }
+                            )
+                        }
+
+                        composable(
+                            route = "concession/{seats}/{totalAmount}/{date}/{time}",
+                            arguments = listOf(
+                                navArgument("seats") { type = NavType.StringType },
+                                navArgument("totalAmount") { type = NavType.FloatType },
+                                navArgument("date") { type = NavType.StringType },
+                                navArgument("time") { type = NavType.StringType }
+                            )
+                        ) { entry ->
+                            val seats = entry.arguments?.getString("seats") ?: ""
+                            val date = entry.arguments?.getString("date") ?: ""
+                            val time = entry.arguments?.getString("time") ?: ""
+                            ConcessionScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onPaymentClick = { updatedTotal ->
+                                    navController.navigate("payment/$seats/$updatedTotal/$date/$time")
+                                }
+                            )
+                        }
+
+                        composable(
+                            route = "payment/{seats}/{totalAmount}/{date}/{time}",
+                            arguments = listOf(
+                                navArgument("seats") { type = NavType.StringType },
+                                navArgument("totalAmount") { type = NavType.FloatType },
+                                navArgument("date") { type = NavType.StringType },
+                                navArgument("time") { type = NavType.StringType }
+                            )
+                        ) {
+                            PaymentScreen(
+                                onBackClick = {
+                                    navController.popBackStack()
+                                },
+                                onPaymentSuccess = {
+                                    navController.navigate("home") {
+                                        popUpTo("home") { inclusive = true }
+                                    }
                                 }
                             )
                         }

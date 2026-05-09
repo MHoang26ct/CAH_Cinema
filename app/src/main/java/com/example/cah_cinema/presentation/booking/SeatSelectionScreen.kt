@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -27,7 +26,7 @@ import com.example.cah_cinema.domain.model.SeatType
 fun SeatSelectionScreen(
     viewModel: SeatSelectionViewModel = viewModel(),
     onBackClick: () -> Unit = {},
-    onConfirmClick: () -> Unit = {}
+    onConfirmClick: (String, Double) -> Unit = { _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
     val totalAmount = viewModel.getTotalAmount()
@@ -47,7 +46,9 @@ fun SeatSelectionScreen(
             BookingBottomBar(
                 totalTickets = state.selectedSeats.size,
                 totalAmount = totalAmount,
-                onBookClick = onConfirmClick,
+                onBookClick = {
+                    onConfirmClick(selectedSeatsDisplay, totalAmount)
+                },
                 buttonText = "Chọn chỗ",
                 selectedSeatsDisplay = selectedSeatsDisplay
             )
