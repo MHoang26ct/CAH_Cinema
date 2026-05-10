@@ -6,6 +6,7 @@ import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.Seat
 import com.example.cah_cinema.domain.model.SeatStatus
 import com.example.cah_cinema.domain.model.SeatType
+import com.example.cah_cinema.util.ImageUrls
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +24,8 @@ data class SeatSelectionState(
     val coupleTicketsCount: Int = 0,
     val basePrice: Double = 0.0,
     val extraPrice: Double = 0.0,
-    val isLoading: Boolean = false
+    val errorMessage: String? = null,
+    val isLoading: Boolean = false,
 )
 
 class SeatSelectionViewModel(
@@ -54,7 +56,7 @@ class SeatSelectionViewModel(
             id = "hen_em_ngay_nhat_thuc",
             title = "HẸN EM NGÀY NHẬT THỰC",
             genre = "Drama",
-            posterUrl = "https://files.betacinemas.vn/files/media/images/2024/04/16/434863920-1123447998937086-458145417830209700-n-102551-160424-42.jpg",
+            posterUrl = ImageUrls.HEN_EM_NGAY_NHAT_THUC_BANNER,
             format = "2D",
             age = "T13",
             duration = "118 phút"
@@ -73,11 +75,11 @@ class SeatSelectionViewModel(
                 }
                 
                 val status = when {
-                    row == "B" && i == 6 -> SeatStatus.TAKEN_BY_OTHERS
-                    row == "C" && i == 14 -> SeatStatus.TAKEN_BY_OTHERS
-                    row == "C" && (i == 9 || i == 4) -> SeatStatus.MAINTENANCE
-                    row == "D" && i == 11 -> SeatStatus.TAKEN_BY_OTHERS
-                    row == "D" && i == 7 -> SeatStatus.BOOKED
+                    (row == "B") && (i == 6) -> SeatStatus.TAKEN_BY_OTHERS
+                    (row == "C") && (i == 14) -> SeatStatus.TAKEN_BY_OTHERS
+                    (row == "C") && ((i == 9) || (i == 4)) -> SeatStatus.MAINTENANCE
+                    (row == "D") && (i == 11) -> SeatStatus.TAKEN_BY_OTHERS
+                    (row == "D") && (i == 7) -> SeatStatus.BOOKED
                     else -> SeatStatus.AVAILABLE
                 }
                 
@@ -106,7 +108,22 @@ class SeatSelectionViewModel(
     }
 
     fun onSeatClick(seat: Seat) {
-        if (seat.status != SeatStatus.AVAILABLE && seat.status != SeatStatus.SELECTED) return
+        // Xử lý các trạng thái không thể chọn
+        when (seat.status) {
+            SeatStatus.BOOKED -> {
+                _state.update { it.copy(errorMessage = "ghế đã được đặt") }
+                return
+            }
+            SeatStatus.TAKEN_BY_OTHERS -> {
+                _state.update { it.copy(errorMessage = "ghế đang được chọn bởi người khác") }
+                return
+            }
+            SeatStatus.MAINTENANCE -> {
+                _state.update { it.copy(errorMessage = "ghế đang bảo trì") }
+                return
+            }
+            else -> {} // AVAILABLE hoặc SELECTED thì tiếp tục xử lý
+        }
 
         _state.update { currentState ->
             val isSelected = currentState.selectedSeats.any { it.id == seat.id }
@@ -117,11 +134,11 @@ class SeatSelectionViewModel(
                 if (currentState.selectedSeats.size >= totalTicketsAllowed) return@update currentState
 
                 // 2. Ràng buộc: Vé đôi chỉ được chọn ghế đôi
-                // Nếu đang chọn ghế thường/VIP nhưng số lượng vé thường đã dùng hết (phải dành vé đôi cho ghế đôi)
+                // Nếu người dùng chọn ghế không phải ghế đôi, nhưng đã hết suất vé thường (phải dùng vé đôi)
                 if (seat.type != SeatType.COUPLE) {
                     val currentNonCoupleSelected = currentState.selectedSeats.count { it.type != SeatType.COUPLE }
                     if (currentNonCoupleSelected >= currentState.regularTicketsCount) {
-                        return@update currentState // Không thể dùng vé đôi cho ghế đơn
+                        return@update currentState.copy(errorMessage = "vui lòng chọn ghế đôi")
                     }
                 }
                 
@@ -133,7 +150,8 @@ class SeatSelectionViewModel(
                 currentState.copy(
                     seats = updatedSeats,
                     selectedSeats = newSelectedSeats,
-                    extraPrice = calculateExtraPrice(newSelectedSeats, currentState.coupleTicketsCount)
+                    extraPrice = calculateExtraPrice(newSelectedSeats, currentState.coupleTicketsCount),
+                    errorMessage = null
                 )
             } else {
                 val newSelectedSeats = currentState.selectedSeats.filter { it.id != seat.id }
@@ -144,10 +162,15 @@ class SeatSelectionViewModel(
                 currentState.copy(
                     seats = updatedSeats,
                     selectedSeats = newSelectedSeats,
-                    extraPrice = calculateExtraPrice(newSelectedSeats, currentState.coupleTicketsCount)
+                    extraPrice = calculateExtraPrice(newSelectedSeats, currentState.coupleTicketsCount),
+                    errorMessage = null
                 )
             }
         }
+    }
+
+    fun clearErrorMessage() {
+        _state.update { it.copy(errorMessage = null) }
     }
 
     private fun calculateExtraPrice(selectedSeats: List<Seat>, coupleTicketsCount: Int): Double {

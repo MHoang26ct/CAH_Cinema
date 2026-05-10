@@ -3,6 +3,7 @@ package com.example.cah_cinema.presentation.booking
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cah_cinema.util.ImageUrls
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +18,7 @@ data class PaymentUiState(
     // Movie Info
     val movieTitle: String = "HẸN EM NGÀY NHẬT THỰC",
     val movieAge: String = "T16",
-    val posterUrl: String = "https://files.betacinemas.vn/files/media/images/2024/04/16/434863920-1123447998937086-458145417830209700-n-102551-160424-42.jpg", 
+    val posterUrl: String = ImageUrls.HEN_EM_NGAY_NHAT_THUC_BANNER,
     val tags: List<String> = listOf("Drama", "2D", "T16"),
     val ageNote: String = "Không dành cho khán giả dưới 16 tuổi",
     val duration: String = "118 phút",
@@ -30,8 +31,9 @@ data class PaymentUiState(
     val date: String = "09/04/2026",
     val subRoom: String = "01",
     
-    // Timer
-    val timeLeftSeconds: Int = 300, 
+    // Timer (Increased to 10 minutes)
+    val timeLeftSeconds: Int = 600, 
+    val isTimeout: Boolean = false,
     
     // Pricing
     val ticketPricePerSeat: Double = 45000.0,
@@ -44,7 +46,8 @@ data class PaymentUiState(
     val concessionTotal: Double = 0.0,
     
     val discount: Double = 0.0,
-    val selectedPaymentMethod: PaymentMethod = PaymentMethod.MOMO
+    val selectedPaymentMethod: PaymentMethod = PaymentMethod.MOMO,
+    val isPaymentSuccessful: Boolean = false,
 ) {
     // Calculated totals
     val totalAmount: Double get() = ticketTotal + concessionTotal
@@ -81,15 +84,17 @@ class PaymentViewModel(
     val uiState: StateFlow<PaymentUiState> = _uiState.asStateFlow()
 
     init {
-        val seatList = if (seatsArg.isNotEmpty()) seatsArg.split(", ") else emptyList()
+        // Support both " : " and ", " as separators just in case
+        val seatList = if (seatsArg.isNotEmpty()) {
+            if (seatsArg.contains(" : ")) seatsArg.split(" : ") else seatsArg.split(", ")
+        } else {
+            emptyList()
+        }
         
-        // Mock logic to split seat price and popcorn price from the total amount
-        // BACKEND NOTE: In production, fetch the real split or individual prices from Repository
         val ticketPrice = 45000.0
         val ticketTotal = seatList.size * ticketPrice
         val concessionTotal = (totalAmountArg.toDouble() - ticketTotal).coerceAtLeast(0.0)
 
-        // Restore slash for display if it was replaced by dash
         val displayDate = dateArg.replace("-", "/")
 
         _uiState.update { it.copy(
@@ -111,6 +116,8 @@ class PaymentViewModel(
                 delay(1000)
                 _uiState.update { it.copy(timeLeftSeconds = it.timeLeftSeconds - 1) }
             }
+            // Timer hit 0
+            _uiState.update { it.copy(isTimeout = true) }
         }
     }
 
@@ -119,6 +126,12 @@ class PaymentViewModel(
     }
 
     fun onPaymentClick() {
-        // Handle payment logic
+        // Handle payment logic - Backend integration required
+        // Simulating a payment check
+        viewModelScope.launch {
+            // Check if payment is already made via QR transfer
+            // In a real app, this would be a server call
+            _uiState.update { it.copy(isPaymentSuccessful = true) }
+        }
     }
 }

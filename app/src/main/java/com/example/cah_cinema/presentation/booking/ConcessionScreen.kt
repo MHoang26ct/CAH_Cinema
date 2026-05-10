@@ -1,6 +1,5 @@
 package com.example.cah_cinema.presentation.booking
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +29,7 @@ import com.example.cah_cinema.ui.theme.CyanBlue
 fun ConcessionScreen(
     viewModel: ConcessionViewModel = viewModel(),
     onBackClick: () -> Unit = {},
-    onPaymentClick: (Double) -> Unit = {}
+    onPaymentClick: (Double) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     
@@ -45,7 +44,7 @@ fun ConcessionScreen(
                     .fillMaxWidth()
                     .statusBarsPadding()
                     .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -64,7 +63,7 @@ fun ConcessionScreen(
         },
         bottomBar = {
             BookingBottomBar(
-                totalTickets = state.selectedSeatsDisplay.split(", ").filter { it.isNotEmpty() }.size,
+                totalTickets = state.selectedSeatsDisplay.split(" : ").filter { it.isNotEmpty() }.size,
                 totalAmount = totalAmount,
                 onBookClick = { onPaymentClick(totalAmount) },
                 buttonText = "Thanh toán",
@@ -94,8 +93,7 @@ fun ConcessionScreen(
                 items(drinks) { concession ->
                     ConcessionItem(
                         concession = concession,
-                        onQuantityChange = { delta -> viewModel.onQuantityChange(concession.id, delta) }
-                    )
+                    ) { delta -> viewModel.onQuantityChange(concession.id, delta) }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
@@ -113,8 +111,7 @@ fun ConcessionScreen(
                 items(popcorns) { concession ->
                     ConcessionItem(
                         concession = concession,
-                        onQuantityChange = { delta -> viewModel.onQuantityChange(concession.id, delta) }
-                    )
+                    ) { delta -> viewModel.onQuantityChange(concession.id, delta) }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }

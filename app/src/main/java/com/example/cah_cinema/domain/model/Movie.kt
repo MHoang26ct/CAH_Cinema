@@ -13,7 +13,8 @@ data class Movie(
     val director: String = "",
     val cast: String = "",
     val description: String = "",
-    val bannerUrl: String = ""
+    val bannerUrl: String = "",
+    val isUpcoming: Boolean = false
 )
 
 data class Showtime(
@@ -26,6 +27,8 @@ data class Cinema(
     val id: String,
     val name: String,
     val address: String,
+    val imageUrl: String = "",
+    val phone: String = "",
     val showtimes: List<Showtime> = emptyList()
 )
 

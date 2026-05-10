@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.TicketType
+import com.example.cah_cinema.util.ImageUrls
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,7 +41,7 @@ class TicketSelectionViewModel(
             id = "hen_em_ngay_nhat_thuc",
             title = "HẸN EM NGÀY NHẬT THỰC",
             genre = "Drama",
-            posterUrl = "https://files.betacinemas.vn/files/media/images/2024/04/16/434863920-1123447998937086-458145417830209700-n-102551-160424-42.jpg",
+            posterUrl = ImageUrls.HEN_EM_NGAY_NHAT_THUC_BANNER,
             format = "2D",
             age = "T16",
             duration = "118 phút"

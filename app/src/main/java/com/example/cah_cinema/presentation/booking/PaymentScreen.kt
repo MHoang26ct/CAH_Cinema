@@ -32,11 +32,6 @@ import com.example.cah_cinema.ui.theme.CyanBlue
 
 /**
  * PaymentScreen - Frontend implementation matching the design.
- * 
- * ROLE: Frontend Developer
- * BACKEND NOTES: 
- * - Positions for backend integration are marked with "BACKEND NOTE".
- * - Data is currently driven by [PaymentUiState] in [PaymentViewModel].
  */
 @Composable
 fun PaymentScreen(
@@ -45,6 +40,33 @@ fun PaymentScreen(
     onPaymentSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Handle payment success navigation
+    androidx.compose.runtime.LaunchedEffect(uiState.isPaymentSuccessful) {
+        if (uiState.isPaymentSuccessful) {
+            onPaymentSuccess()
+        }
+    }
+
+    // Timeout Dialog
+    if (uiState.isTimeout) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text(text = "Hết thời gian", fontWeight = FontWeight.Bold) },
+            text = { Text(text = "Quá thời gian đặt vé, vui lòng đặt lại.") },
+            confirmButton = {
+                Button(
+                    onClick = { onBackClick() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanBlue)
+                ) {
+                    Text("ĐẶT LẠI", color = Color.Black)
+                }
+            },
+            containerColor = Color(0xFF21212B),
+            titleContentColor = Color.White,
+            textContentColor = Color.White.copy(alpha = 0.8f)
+        )
+    }
 
     Scaffold(
         containerColor = Color(0xFF13131A),
@@ -65,10 +87,7 @@ fun PaymentScreen(
             ) {
                 Button(
                     onClick = { 
-                        // BACKEND NOTE: Trigger payment process
                         viewModel.onPaymentClick()
-                        // For demo: simulation of success
-                        // onPaymentSuccess() 
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
                     shape = RoundedCornerShape(12.dp),
@@ -103,16 +122,13 @@ fun PaymentScreen(
                     tags = uiState.tags,
                     ageNote = uiState.ageNote,
                     duration = uiState.duration,
-                    seat = uiState.selectedSeats.joinToString(", ")
+                    seat = uiState.selectedSeats.joinToString(" : ") // Separator changed to " : "
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Main Payment Details Card
-                PaymentDetailsCard(
-                    uiState = uiState, 
-                    onMethodSelect = viewModel::onPaymentMethodSelected
-                )
+                PaymentDetailsCard(uiState = uiState)
                 
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -179,7 +195,7 @@ fun PaymentMovieInfo(
         AsyncImage(
             model = posterUrl,
             contentDescription = null,
-            placeholder = painterResource(id = R.drawable.ic_launcher_background), // BACKEND NOTE: Use real movie poster
+            placeholder = painterResource(id = R.drawable.ic_launcher_background),
             modifier = Modifier
                 .width(90.dp)
                 .height(130.dp)
@@ -223,13 +239,12 @@ fun PaymentMovieInfo(
 
 @Composable
 fun PaymentDetailsCard(
-    uiState: PaymentUiState,
-    onMethodSelect: (PaymentMethod) -> Unit
+    uiState: PaymentUiState
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF21212B) // Slightly lighter than background
+        color = Color(0xFF21212B)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // TICKET INFO SECTION
@@ -295,23 +310,8 @@ fun PaymentDetailsCard(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // PAYMENT METHOD SELECTION
-            Text(
-                text = "Phương thức thanh toán:",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            PaymentMethod.entries.forEach { method ->
-                PaymentMethodItem(
-                    method = method,
-                    isSelected = uiState.selectedPaymentMethod == method,
-                    onClick = { onMethodSelect(method) }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
+            // PAYMENT VIA QR TRANSFER
+            BankingTransferSection(amount = uiState.finalAmount)
         }
     }
 }
@@ -351,54 +351,86 @@ fun InfoRow(label: String, value: String, isHighlight: Boolean = false) {
 }
 
 @Composable
-fun PaymentMethodItem(
-    method: PaymentMethod,
-    isSelected: Boolean,
-    onClick: () -> Unit
+fun BankingTransferSection(
+    amount: Double,
+    bookingId: String = "36363636"
 ) {
-    // BACKEND NOTE: Add icons for each payment method in res/drawable
-    val iconRes = when(method) {
-        PaymentMethod.MOMO -> R.drawable.ic_launcher_foreground // Replace with real icons
-        PaymentMethod.ZALOPAY -> R.drawable.ic_launcher_foreground
-        PaymentMethod.SHOPEEPAY -> R.drawable.ic_launcher_foreground
-        PaymentMethod.BANKING -> R.drawable.ic_launcher_foreground
-    }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(10.dp),
-        color = Color.Transparent,
-        border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp, 
-            color = if (isSelected) CyanBlue else Color.White.copy(alpha = 0.3f)
-        )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Text(
+            text = "Phương thức thanh toán:",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            modifier = Modifier.align(Alignment.Start)
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Quét mã QR để chuyển khoản",
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = 14.sp
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Surface(
+            modifier = Modifier
+                .size(180.dp),
+            color = Color.White,
+            shape = RoundedCornerShape(12.dp)
         ) {
             Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(Color.White, RoundedCornerShape(6.dp)),
+                modifier = Modifier.padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Placeholder for real icons
-                Text(
-                    text = method.displayName.take(1), 
-                    color = Color.Black, 
-                    fontWeight = FontWeight.Bold
+                // QR Placeholder
+                Icon(
+                    painter = painterResource(id = R.drawable.ticket_icon),
+                    contentDescription = "QR Code",
+                    tint = Color.Black,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = method.displayName,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
         }
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                .padding(16.dp)
+        ) {
+            BankingDetailRow("Số tài khoản:", "1234 5678 9999")
+            BankingDetailRow("Tên tài khoản:", "CÔNG TY CAH CINEMA")
+            BankingDetailRow("Nội dung:", "CAH $bookingId")
+            BankingDetailRow("Số tiền:", formatPrice(amount))
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Text(
+            text = "* Vui lòng kiểm tra kỹ thông tin trước khi chuyển khoản",
+            color = Color.Red.copy(alpha = 0.8f),
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun BankingDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = label, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+        Text(text = value, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }

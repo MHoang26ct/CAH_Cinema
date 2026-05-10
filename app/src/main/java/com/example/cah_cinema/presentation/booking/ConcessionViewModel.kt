@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.example.cah_cinema.domain.model.Concession
 import com.example.cah_cinema.domain.model.ConcessionType
+import com.example.cah_cinema.util.ImageUrls
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,11 +40,11 @@ class ConcessionViewModel(
 
     private fun loadConcessions() {
         val mockData = listOf(
-            Concession("1", "Pepsi lớn", 37000.0, "https://files.betacinemas.vn/files/media/images/2023/10/11/ly-pepsi-105151-111023-42.png", ConcessionType.DRINK),
-            Concession("2", "Fanta lớn", 37000.0, "https://files.betacinemas.vn/files/media/images/2023/10/11/ly-fanta-105234-111023-56.png", ConcessionType.DRINK),
-            Concession("3", "7Up lớn", 37000.0, "https://files.betacinemas.vn/files/media/images/2023/10/11/ly-7up-105214-111023-48.png", ConcessionType.DRINK),
-            Concession("4", "Bắp thường", 53000.0, "https://files.betacinemas.vn/files/media/images/2023/10/11/bap-ngot-105253-111023-14.png", ConcessionType.POPCORN),
-            Concession("5", "Bắp caramel", 57000.0, "https://files.betacinemas.vn/files/media/images/2023/10/11/bap-phomai-105314-111023-95.png", ConcessionType.POPCORN)
+            Concession("1", "Pepsi lớn", 37000.0, ImageUrls.PEPSI_IMAGE, ConcessionType.DRINK),
+            Concession("2", "Fanta lớn", 37000.0, ImageUrls.FANTA_IMAGE, ConcessionType.DRINK),
+            Concession("3", "7Up lớn", 37000.0, ImageUrls.SEVEN_UP_IMAGE, ConcessionType.DRINK),
+            Concession("4", "Bắp thường", 53000.0, ImageUrls.POPCORN_REGULAR, ConcessionType.POPCORN),
+            Concession("5", "Bắp caramel", 57000.0, ImageUrls.POPCORN_CARAMEL, ConcessionType.POPCORN)
         )
         _state.update { it.copy(concessions = mockData) }
     }

@@ -26,14 +26,23 @@ import com.example.cah_cinema.domain.model.SeatType
 fun SeatSelectionScreen(
     viewModel: SeatSelectionViewModel = viewModel(),
     onBackClick: () -> Unit = {},
-    onConfirmClick: (String, Double) -> Unit = { _, _ -> }
+    onConfirmClick: (String, Double) -> Unit = { _, _ -> },
 ) {
     val state by viewModel.state.collectAsState()
     val totalAmount = viewModel.getTotalAmount()
-    val selectedSeatsDisplay = state.selectedSeats.joinToString(", ") { it.name }
+    val selectedSeatsDisplay = state.selectedSeats.joinToString(" : ") { it.name }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearErrorMessage()
+        }
+    }
 
     Scaffold(
         containerColor = Color(0xFF13131A),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TicketTopBar(
                 title = state.movie?.title ?: "",
@@ -170,7 +179,7 @@ fun SeatItem(seat: Seat, onClick: () -> Unit) {
             .size(if (seat.type == SeatType.COUPLE) 44.dp else 19.dp, 19.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(backgroundColor)
-            .clickable(enabled = seat.status == SeatStatus.AVAILABLE || seat.status == SeatStatus.SELECTED) { onClick() },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         if (seat.type != SeatType.COUPLE) {

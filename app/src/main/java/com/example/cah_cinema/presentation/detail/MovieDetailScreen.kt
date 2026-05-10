@@ -61,11 +61,13 @@ fun MovieDetailScreen(
                     MovieDetailsSection(movie = movie)
                 }
 
-                item {
-                    DateSelectionSection(
-                        dates = state.availableDates,
-                        onDateSelected = { viewModel.onDateSelected(it) }
-                    )
+                if (state.availableDates.isNotEmpty()) {
+                    item {
+                        DateSelectionSection(
+                            dates = state.availableDates,
+                            onDateSelected = { viewModel.onDateSelected(it) }
+                        )
+                    }
                 }
 
                 items(state.cinemas) { cinema ->
