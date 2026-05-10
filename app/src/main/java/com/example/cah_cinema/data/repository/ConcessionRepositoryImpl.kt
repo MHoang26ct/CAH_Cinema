@@ -1,4 +1,4 @@
-package com.example.cah_cinema.presentation.booking
+package com.example.cah_cinema.data.repository
 
 import com.example.cah_cinema.domain.model.Concession
 import com.example.cah_cinema.domain.model.ConcessionType
