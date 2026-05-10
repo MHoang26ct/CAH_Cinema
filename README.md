@@ -72,4 +72,3 @@ Tất cả các ViewModel của Frontend đều đã có biến `isLoading: Bool
 - **Mã vé**: Sau khi thanh toán, Backend cần trả về một chuỗi `ticket_code` để Frontend tạo mã QR tại màn hình chi tiết vé.
 
 ---
-**Frontend đã sẵn sàng toàn bộ giao diện và luồng điều hướng. Mời team Backend triển khai lớp Data để kết nối!**
