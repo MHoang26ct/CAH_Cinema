@@ -55,7 +55,7 @@ fun BottomNavigationBar(
             val itemWidth = totalWidth / 4
             val indicatorSize = 60.dp
 
-            // Sliding Indicator logic
+            // Logic cho chỉ báo trượt (Sliding Indicator)
             val indicatorOffset by animateDpAsState(
                 targetValue = (itemWidth * selectedIndex) + (itemWidth / 2) - (indicatorSize / 2),
                 animationSpec = spring(
@@ -65,7 +65,7 @@ fun BottomNavigationBar(
                 label = "indicatorOffset"
             )
 
-            // The moving bubble background
+            // Bong bóng nền di động
             Box(
                 modifier = Modifier
                     .offset(x = indicatorOffset)

@@ -1,7 +1,7 @@
 package com.example.cah_cinema.domain.model
 
 enum class ConcessionType {
-    DRINK, POPCORN
+    DRINK, POPCORN, COMBO
 }
 
 data class Concession(

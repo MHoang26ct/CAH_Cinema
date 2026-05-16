@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cah_cinema.domain.model.Promotion
-import com.example.cah_cinema.presentation.promotion.PromotionViewModel
+import com.example.cah_cinema.presentation.user.promotion.PromotionViewModel
 import com.example.cah_cinema.ui.theme.CyanBlue
 import com.example.cah_cinema.ui.theme.TextGray
 

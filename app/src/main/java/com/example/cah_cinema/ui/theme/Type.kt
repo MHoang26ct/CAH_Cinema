@@ -9,7 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.cah_cinema.R
 
-// Set of Material typography styles to start with
+// Bộ kiểu chữ Material để bắt đầu
 val Typography = Typography(
     displayLarge = TextStyle(
         fontFamily = FontFamily(Font(R.font.montserrat)),
