@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer container to ensure safe zone for circular mask (72dp icon in 108dp square) -->
+    <!-- The ticket icon is drawn within the central 72x72 area -->
+
+    <path
+        android:fillColor="@color/cyan_blue"
+        android:pathData="M34,44C34,41.79 35.79,40 38,40H70C72.21,40 74,41.79 74,44V48.5C72.62,48.5 71,49.88 71,51.5C71,53.12 72.62,54.5 74,54.5V64C74,66.21 72.21,68 70,68H38C35.79,68 34,66.21 34,64V54.5C35.38,54.5 37,53.12 37,51.5C37,49.88 35.38,48.5 34,48.5V44Z" />
+
+    <path
+        android:fillColor="#13131A"
+        android:pathData="M44,46H64V48H44V46ZM44,54H64V56H44V54ZM44,58H64V60H44V58Z" />
+</vector>
