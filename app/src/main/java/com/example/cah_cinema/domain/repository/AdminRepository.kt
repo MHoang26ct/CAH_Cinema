@@ -11,6 +11,7 @@ interface AdminRepository {
 
     // Movies
     suspend fun createMovie(request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>?
+    suspend fun updateMovie(id: Long, request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>?
     suspend fun deleteMovie(id: Long): BaseResponse<Unit>?
     suspend fun getMovies(): BaseResponse<MoviePageData>?
 

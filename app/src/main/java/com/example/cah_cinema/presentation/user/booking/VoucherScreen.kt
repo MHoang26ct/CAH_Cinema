@@ -27,7 +27,8 @@ fun VoucherScreen(
     currentTotal: Double,
     viewModel: VoucherViewModel = viewModel(),
     onBackClick: () -> Unit,
-    onConfirm: (String, Double) -> Unit
+    // code, voucherId, discountAmount
+    onConfirm: (String, Long, Double) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     var selectedVoucher by remember { mutableStateOf<VoucherItem?>(null) }
@@ -77,7 +78,7 @@ fun VoucherScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { onConfirm(selectedVoucher!!.code, discount) },
+                        onClick = { onConfirm(selectedVoucher!!.code, selectedVoucher!!.id, discount) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
                         shape = RoundedCornerShape(12.dp)

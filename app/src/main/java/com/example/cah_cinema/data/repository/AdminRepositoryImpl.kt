@@ -25,6 +25,10 @@ class AdminRepositoryImpl : AdminRepository {
         return RetrofitClient.apiService.createMovie(request).body()
     }
 
+    override suspend fun updateMovie(id: Long, request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>? {
+        return RetrofitClient.apiService.updateMovie(id, request).body()
+    }
+
     override suspend fun deleteMovie(id: Long): BaseResponse<Unit>? {
         return RetrofitClient.apiService.deleteMovie(id).body()
     }

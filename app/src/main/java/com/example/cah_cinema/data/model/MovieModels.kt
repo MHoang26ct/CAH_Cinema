@@ -8,6 +8,11 @@ data class MoviePageData(
     @SerializedName("totalPages") val totalPages: Int
 )
 
+data class FeaturedMoviesData(
+    @SerializedName("nowShowing") val nowShowing: List<MovieListItem>,
+    @SerializedName("upcoming") val upcoming: List<MovieListItem>
+)
+
 data class MovieListItem(
     @SerializedName("movieId") val id: Long,
     @SerializedName("title") val title: String,

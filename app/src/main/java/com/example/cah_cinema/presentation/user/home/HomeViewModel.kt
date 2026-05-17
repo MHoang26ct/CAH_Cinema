@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class HomeState(
-    val userName: String = "Hinno",
+    val userName: String = "",
     val featuredMovies: List<Movie> = emptyList(),
     val upcomingMovies: List<Movie> = emptyList(),
     val promotions: List<Promotion> = emptyList(),
@@ -23,7 +23,7 @@ data class HomeState(
 )
 
 class HomeViewModel : ViewModel() {
-    
+
     private val dummyPromotions = listOf(
         Promotion(
             id = "1",
@@ -39,39 +39,54 @@ class HomeViewModel : ViewModel() {
         )
     )
 
-    private val _state = MutableStateFlow(
-        HomeState(
-            userName = "Hinno",
-            promotions = dummyPromotions
-        )
-    )
+    private val _state = MutableStateFlow(HomeState(promotions = dummyPromotions))
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
     init {
-        fetchMovies()
+        fetchFeaturedMovies()
     }
 
-    fun fetchMovies() {
+    fun fetchFeaturedMovies() {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.apiService.getMovies()
+                val response = RetrofitClient.apiService.getFeaturedMovies()
                 if (response.isSuccessful) {
-                    val apiResponse = response.body()
-                    val moviePage = apiResponse?.data
-                    val movies = moviePage?.content?.map { it.toDomainMovie() } ?: emptyList()
-                    
-                    _state.update { it.copy(
+                    val data = response.body()?.data
+                    _state.update {
+                        it.copy(
+                            featuredMovies = data?.nowShowing?.map { m -> m.toDomainMovie() } ?: emptyList(),
+                            upcomingMovies = data?.upcoming?.map { m -> m.toDomainMovie() } ?: emptyList(),
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    // Fallback: dùng getMovies nếu featured thất bại
+                    fetchMoviesFallback()
+                }
+            } catch (e: Exception) {
+                fetchMoviesFallback()
+            }
+        }
+    }
+
+    private suspend fun fetchMoviesFallback() {
+        try {
+            val response = RetrofitClient.apiService.getMovies()
+            if (response.isSuccessful) {
+                val movies = response.body()?.data?.content?.map { it.toDomainMovie() } ?: emptyList()
+                _state.update {
+                    it.copy(
                         featuredMovies = movies.take(5),
                         upcomingMovies = if (movies.size > 5) movies.drop(5) else emptyList(),
                         isLoading = false
-                    ) }
-                } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = "Không thể tải danh sách phim") }
+                    )
                 }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            } else {
+                _state.update { it.copy(isLoading = false, errorMessage = "Không thể tải danh sách phim") }
             }
+        } catch (e: Exception) {
+            _state.update { it.copy(isLoading = false, errorMessage = e.message) }
         }
     }
 
@@ -79,7 +94,7 @@ class HomeViewModel : ViewModel() {
         return Movie(
             id = this.id.toString(),
             title = this.title,
-            genre = "2D",
+            genre = "",
             posterUrl = this.posterUrl,
             age = this.ageRating,
             duration = "${this.duration} phút",

@@ -28,16 +28,15 @@ import com.example.cah_cinema.ui.theme.CyanBlue
 @Composable
 fun ConcessionScreen(
     viewModel: ConcessionViewModel = viewModel(),
+    paymentViewModel: PaymentViewModel? = null,
     onBackClick: () -> Unit = {},
     onPaymentClick: (Double) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
-    
-    // Sử dụng trực tiếp totalAmount từ state để UI cập nhật tức thì
     val totalAmount = state.totalAmount
 
     Scaffold(
-        containerColor = Color(0xFF13131A) ,
+        containerColor = Color(0xFF13131A),
         topBar = {
             Row(
                 modifier = Modifier
@@ -65,7 +64,23 @@ fun ConcessionScreen(
             BookingBottomBar(
                 totalTickets = state.selectedSeatsDisplay.split(" : ").filter { it.isNotEmpty() }.size,
                 totalAmount = totalAmount,
-                onBookClick = { onPaymentClick(totalAmount) },
+                onBookClick = {
+                    // Truyền food items đã chọn sang PaymentViewModel trước khi navigate
+                    paymentViewModel?.setFoodItems(
+                        state.concessions
+                            .filter { it.quantity > 0 }
+                            .map { concession ->
+                                ConcessionSummaryItem(
+                                    name = concession.name,
+                                    quantity = concession.quantity,
+                                    unitPrice = concession.price,
+                                    imageUrl = concession.imageUrl,
+                                    foodId = concession.id.toLongOrNull() ?: 0L
+                                )
+                            }
+                    )
+                    onPaymentClick(totalAmount)
+                },
                 buttonText = "Thanh toán",
                 selectedSeatsDisplay = state.selectedSeatsDisplay
             )

@@ -17,6 +17,8 @@ data class TicketInfo(
     val seat: String,
     val posterUrl: String,
     val bookingId: Long = 0,
+    val roomName: String = "",
+    val totalPrice: Double = 0.0,
 )
 
 data class ProfileState(
@@ -82,13 +84,22 @@ class ProfileViewModel : ViewModel() {
                             rank = user.rankLevel,
                             role = user.role,
                             recentTicket = recentInvoice?.let { invoice ->
+                                val seatDisplay = invoice.seats
+                                    ?.map { s ->
+                                        val row = ('A' + (s.seatRow.toInt() - 1)).toString()
+                                        val col = s.seatCol.toInt().toString().padStart(2, '0')
+                                        "$row$col"
+                                    }
+                                    ?.joinToString(", ") ?: ""
                                 TicketInfo(
                                     movieTitle = invoice.movieTitle,
                                     cinemaName = invoice.cinemaName,
                                     showTime = invoice.startTime,
-                                    seat = "",
+                                    seat = seatDisplay,
                                     posterUrl = invoice.moviePosterUrl,
-                                    bookingId = invoice.bookingId
+                                    bookingId = invoice.bookingId,
+                                    roomName = invoice.roomName ?: "",
+                                    totalPrice = invoice.totalPrice
                                 )
                             },
                             isLoading = false

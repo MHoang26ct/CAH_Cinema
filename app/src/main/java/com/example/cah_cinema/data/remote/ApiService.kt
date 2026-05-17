@@ -25,6 +25,9 @@ interface ApiService {
     suspend fun changeForgotPassword(@Body request: ResetPasswordRequest): Response<BaseResponse<Unit>>
 
     // 2. Movies
+    @GET("api/v1/public/movies/featured")
+    suspend fun getFeaturedMovies(): Response<BaseResponse<FeaturedMoviesData>>
+
     @GET("api/v1/public/movies")
     suspend fun getMovies(
         @Query("title") title: String? = null,

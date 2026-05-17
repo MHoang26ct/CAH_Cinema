@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cah_cinema.ui.theme.CyanBlue
-
 /**
  * Simplified AdminScaffold - No longer contains the sidebar itself.
  * The Sidebar is now managed globally in MainActivity for persistence.
@@ -31,20 +30,24 @@ import com.example.cah_cinema.ui.theme.CyanBlue
 @Composable
 fun AdminScaffold(
     title: String,
+    snackbarHostState: SnackbarHostState? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
     Scaffold(
         containerColor = Color(0xFF13131A),
+        snackbarHost = {
+            snackbarHostState?.let { SnackbarHost(it) }
+        },
         topBar = {
             TopAppBar(
-                title = { 
-            Text(
-                text = title.uppercase(), 
-                color = Color.White, 
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.5.sp
-            )
+                title = {
+                    Text(
+                        text = title.uppercase(),
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.5.sp
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF13131A)
@@ -60,35 +63,59 @@ fun AdminSidebar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
     onLogout: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isExpanded: Boolean = false,
+    onToggle: () -> Unit = {}
 ) {
+    val sidebarWidth by animateDpAsState(
+        targetValue = if (isExpanded) 260.dp else 60.dp,
+        animationSpec = androidx.compose.animation.core.tween(300),
+        label = "sidebarWidth"
+    )
+
     Column(
         modifier = modifier
+            .width(sidebarWidth)
             .background(Color(0xFF1C1C22))
-            .padding(vertical = 24.dp, horizontal = 16.dp)
+            .padding(vertical = 24.dp, horizontal = if (isExpanded) 16.dp else 8.dp)
     ) {
-        // Logo Section
+        // Toggle button row
         Row(
-            modifier = Modifier.padding(bottom = 40.dp, start = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = if (isExpanded) 24.dp else 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (isExpanded) Arrangement.SpaceBetween else Arrangement.Center
         ) {
-            Surface(
-                modifier = Modifier.size(36.dp),
-                color = CyanBlue,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Movie, contentDescription = null, tint = Color.Black, modifier = Modifier.size(22.dp))
+            if (isExpanded) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        color = CyanBlue,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Movie, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "CAH CINEMA",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
+                    )
                 }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "CAH CINEMA",
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.sp
-            )
+            IconButton(onClick = onToggle, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ChevronLeft else Icons.Default.Menu,
+                    contentDescription = if (isExpanded) "Đóng menu" else "Mở menu",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
 
         val menuItems = listOf(
@@ -105,6 +132,7 @@ fun AdminSidebar(
             SidebarMenuItem(
                 item = item,
                 isSelected = currentRoute == item.route,
+                isExpanded = isExpanded,
                 onClick = { onNavigate(item.route) }
             )
         }
@@ -116,6 +144,7 @@ fun AdminSidebar(
         SidebarMenuItem(
             item = SidebarItem("Đăng xuất", "logout", Icons.AutoMirrored.Filled.Logout),
             isSelected = false,
+            isExpanded = isExpanded,
             onClick = onLogout,
             activeColor = Color.Red
         )
@@ -129,10 +158,11 @@ fun SidebarMenuItem(
     item: SidebarItem,
     isSelected: Boolean,
     onClick: () -> Unit,
-    activeColor: Color = CyanBlue
+    activeColor: Color = CyanBlue,
+    isExpanded: Boolean = true
 ) {
     val horizontalPadding by animateDpAsState(if (isSelected) 16.dp else 12.dp, label = "padding")
-    
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -142,8 +172,12 @@ fun SidebarMenuItem(
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = horizontalPadding),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(
+                vertical = 12.dp,
+                horizontal = if (isExpanded) horizontalPadding else 0.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (isExpanded) Arrangement.Start else Arrangement.Center
         ) {
             Icon(
                 imageVector = item.icon,
@@ -151,21 +185,22 @@ fun SidebarMenuItem(
                 tint = if (isSelected) activeColor else Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.size(22.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = item.title,
-                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-            )
-            
-            if (isSelected) {
-                Spacer(modifier = Modifier.weight(1f))
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .background(activeColor, CircleShape)
+            if (isExpanded) {
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = item.title,
+                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )
+                if (isSelected) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp)
+                            .background(activeColor, CircleShape)
+                    )
+                }
             }
         }
     }

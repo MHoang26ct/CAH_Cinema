@@ -126,25 +126,32 @@ class MainActivity : ComponentActivity() {
                             Screen.AdminSettings.route to 16
                         )
 
+                        val isSidebarExpanded = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
                         Row(modifier = Modifier.fillMaxSize()) {
-                            // Admin Sidebar (Persistent)
+                            // Admin Sidebar (Persistent, collapsible)
                             if (currentRoute?.startsWith("admin_") == true) {
                                 AdminSidebar(
                                     currentRoute = currentRoute,
-                                    onNavigate = { route -> navController.navigateToTab(route) },
+                                    isExpanded = isSidebarExpanded.value,
+                                    onToggle = { isSidebarExpanded.value = !isSidebarExpanded.value },
+                                    onNavigate = { route ->
+                                        navController.navigateToTab(route)
+                                        isSidebarExpanded.value = false
+                                    },
                                     onLogout = {
                                         navController.navigate(Screen.Login.route) {
                                             popUpTo(0) { inclusive = true }
                                         }
                                     },
-                                    modifier = Modifier.width(260.dp).fillMaxHeight()
+                                    modifier = Modifier.fillMaxHeight()
                                 )
                             }
 
                             Box(modifier = Modifier.weight(1f)) {
                                 NavHost(
                                     navController = navController,
-                                    startDestination = Screen.Splash.route,
+                                    startDestination = Screen.Login.route,
                                     modifier = Modifier.fillMaxSize(),
                                     enterTransition = {
                                         val initial = initialState.destination.route ?: ""
@@ -207,16 +214,6 @@ class MainActivity : ComponentActivity() {
                                         slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
                                     }
                                 ) {
-                                    composable(Screen.Splash.route) {
-                                        SplashScreen(
-                                            onNextScreen = {
-                                                navController.navigate(Screen.Login.route) {
-                                                    popUpTo(Screen.Splash.route) { inclusive = true }
-                                                }
-                                            }
-                                        )
-                                    }
-
                                     composable(Screen.Login.route) {
                                         LoginScreen(
                                             onLoginSuccess = { role ->
@@ -501,7 +498,12 @@ class MainActivity : ComponentActivity() {
                                         val seatsDisplay = entry.arguments?.getString("seatsDisplay") ?: ""
                                         val date = entry.arguments?.getString("date") ?: ""
                                         val time = entry.arguments?.getString("time") ?: ""
+                                        // Tạo PaymentViewModel trước để truyền food items vào
+                                        val paymentViewModel: PaymentViewModel = viewModel(
+                                            viewModelStoreOwner = entry
+                                        )
                                         ConcessionScreen(
+                                            paymentViewModel = paymentViewModel,
                                             onBackClick = {
                                                 navController.popBackStack()
                                             },
@@ -534,9 +536,11 @@ class MainActivity : ComponentActivity() {
                                         )
                                     ) { entry ->
                                         val voucherName by entry.savedStateHandle.getStateFlow<String?>("voucherName", null).collectAsState()
+                                        val voucherId by entry.savedStateHandle.getStateFlow<Long?>("voucherId", null).collectAsState()
                                         val voucherDiscount by entry.savedStateHandle.getStateFlow<Double?>("voucherDiscount", null).collectAsState()
 
                                         PaymentScreen(
+                                            viewModel = viewModel(viewModelStoreOwner = entry),
                                             onBackClick = {
                                                 navController.popBackStack()
                                             },
@@ -549,6 +553,7 @@ class MainActivity : ComponentActivity() {
                                                 navController.navigate(Screen.Voucher.createRoute(total.toFloat()))
                                             },
                                             voucherName = voucherName,
+                                            voucherId = voucherId,
                                             voucherDiscount = voucherDiscount
                                         )
                                     }
@@ -561,8 +566,9 @@ class MainActivity : ComponentActivity() {
                                         VoucherScreen(
                                             currentTotal = totalAmount,
                                             onBackClick = { navController.popBackStack() },
-                                            onConfirm = { code, discount ->
+                                            onConfirm = { code, id, discount ->
                                                 navController.previousBackStackEntry?.savedStateHandle?.set("voucherName", code)
+                                                navController.previousBackStackEntry?.savedStateHandle?.set("voucherId", id)
                                                 navController.previousBackStackEntry?.savedStateHandle?.set("voucherDiscount", discount)
                                                 navController.popBackStack()
                                             }
@@ -573,18 +579,22 @@ class MainActivity : ComponentActivity() {
                                         val profileViewModel: ProfileViewModel = viewModel()
                                         val paymentViewModel: PaymentViewModel = viewModel()
                                         val paymentState by paymentViewModel.uiState.collectAsState()
-                                        
+
                                         PaymentLoadingScreen(
                                             onLoadingComplete = {
+                                                // Cập nhật recent ticket với bookingId thực từ server
                                                 profileViewModel.updateRecentTicket(
                                                     TicketInfo(
                                                         movieTitle = paymentState.movieTitle,
                                                         cinemaName = paymentState.cinemaName,
                                                         showTime = "${paymentState.showtime} - ${paymentState.date}",
                                                         seat = paymentState.selectedSeats.joinToString(", "),
-                                                        posterUrl = paymentState.posterUrl
+                                                        posterUrl = paymentState.posterUrl,
+                                                        bookingId = paymentState.bookingId ?: 0L
                                                     )
                                                 )
+                                                // Reload profile để lấy dữ liệu mới nhất từ server
+                                                profileViewModel.loadProfileData()
 
                                                 navController.navigate(Screen.TicketDetail.route) {
                                                     popUpTo(Screen.PaymentLoading.route) { inclusive = true }

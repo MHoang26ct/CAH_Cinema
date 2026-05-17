@@ -1,9 +1,7 @@
 package com.example.cah_cinema.presentation.user.booking
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,10 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,60 +22,49 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cah_cinema.R
 import com.example.cah_cinema.ui.theme.CyanBlue
 
-/**
- * PaymentScreen - Frontend implementation matching the design.
- */
 @Composable
 fun PaymentScreen(
-    viewModel: PaymentViewModel = viewModel(),
+    viewModel: PaymentViewModel,
     onBackClick: () -> Unit = {},
     onPaymentSuccess: () -> Unit = {},
     onSelectVoucher: (Double) -> Unit = {},
     voucherName: String? = null,
+    voucherId: Long? = null,
     voucherDiscount: Double? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Cập nhật voucher nếu có từ màn hình chọn voucher
-    androidx.compose.runtime.LaunchedEffect(voucherName, voucherDiscount) {
-        if (voucherName != null && voucherDiscount != null) {
-            viewModel.applyVoucher(voucherName, voucherDiscount)
+    // Áp dụng voucher khi nhận từ màn hình chọn voucher
+    LaunchedEffect(voucherName, voucherId, voucherDiscount) {
+        if (voucherName != null && voucherId != null && voucherDiscount != null) {
+            viewModel.applyVoucher(voucherName, voucherId, voucherDiscount)
         }
     }
 
-    // Hiển thị thông báo lỗi nếu có
-    androidx.compose.runtime.LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
-        }
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { snackbarHostState.showSnackbar(it) }
     }
 
-    // Xử lý điều hướng khi thanh toán thành công
-    androidx.compose.runtime.LaunchedEffect(uiState.isPaymentSuccessful) {
-        if (uiState.isPaymentSuccessful) {
-            onPaymentSuccess()
-        }
+    LaunchedEffect(uiState.isPaymentSuccessful) {
+        if (uiState.isPaymentSuccessful) onPaymentSuccess()
     }
 
-    // Hộp thoại hết giờ
+    // Dialog hết giờ
     if (uiState.isTimeout) {
         AlertDialog(
-            onDismissRequest = { },
-            title = { Text(text = "Hết thời gian", fontWeight = FontWeight.Bold) },
-            text = { Text(text = "Quá thời gian đặt vé, vui lòng đặt lại.") },
+            onDismissRequest = {},
+            title = { Text("Hết thời gian", fontWeight = FontWeight.Bold) },
+            text = { Text("Quá thời gian đặt vé, vui lòng đặt lại.") },
             confirmButton = {
                 Button(
-                    onClick = { onBackClick() },
+                    onClick = onBackClick,
                     colors = ButtonDefaults.buttonColors(containerColor = CyanBlue)
-                ) {
-                    Text("ĐẶT LẠI", color = Color.Black)
-                }
+                ) { Text("ĐẶT LẠI", color = Color.Black) }
             },
             containerColor = Color(0xFF21212B),
             titleContentColor = Color.White,
@@ -93,8 +77,8 @@ fun PaymentScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             PaymentTopBar(
-                cinemaInfo = "${uiState.cinemaName} - Phòng: ${uiState.room}",
-                dateTimeInfo = "${uiState.date}-${uiState.showtime} | Phòng: ${uiState.subRoom}",
+                cinemaInfo = uiState.cinemaName.ifEmpty { "Thông tin suất chiếu" },
+                dateTimeInfo = "${uiState.date} | ${uiState.showtime}",
                 timeLeft = uiState.timeLeftFormatted,
                 onBackClick = onBackClick
             )
@@ -103,9 +87,7 @@ fun PaymentScreen(
             BookingBottomBar(
                 totalTickets = uiState.ticketQuantity,
                 totalAmount = uiState.finalAmount,
-                onBookClick = {
-                    viewModel.onPaymentClick()
-                },
+                onBookClick = { viewModel.onPaymentClick() },
                 buttonText = if (uiState.isLoading) "ĐANG XỬ LÝ..." else "THANH TOÁN",
                 enabled = !uiState.isLoading
             )
@@ -119,27 +101,60 @@ fun PaymentScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                
-                // Phần thông tin phim
-                PaymentMovieInfo(
-                    title = uiState.movieTitle,
-                    age = uiState.movieAge,
-                    posterUrl = uiState.posterUrl,
-                    tags = uiState.tags,
-                    ageNote = uiState.ageNote,
-                    duration = uiState.duration,
-                    seat = uiState.selectedSeats.joinToString(" : ") // Dấu phân cách đã đổi thành " : "
+
+                // Phần chọn phương thức thanh toán
+                PaymentMethodSelector(
+                    selectedMethod = uiState.selectedPaymentMethod,
+                    onMethodSelected = { viewModel.onPaymentMethodSelected(it) }
                 )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Thẻ chi tiết thanh toán chính
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Thẻ chi tiết thanh toán
                 PaymentDetailsCard(
                     uiState = uiState,
                     onSelectVoucher = { onSelectVoucher(uiState.totalAmount) }
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun PaymentMethodSelector(
+    selectedMethod: PaymentMethod,
+    onMethodSelected: (PaymentMethod) -> Unit
+) {
+    Column {
+        Text(
+            text = "PHƯƠNG THỨC THANH TOÁN",
+            color = CyanBlue,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PaymentMethod.entries.forEach { method ->
+                val isSelected = method == selectedMethod
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onMethodSelected(method) },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isSelected) CyanBlue.copy(alpha = 0.15f) else Color(0xFF21212B),
+                    border = BorderStroke(1.dp, if (isSelected) CyanBlue else Color.White.copy(alpha = 0.1f))
+                ) {
+                    Text(
+                        text = method.displayName,
+                        color = if (isSelected) CyanBlue else Color.White.copy(alpha = 0.7f),
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 10.dp)
+                    )
+                }
             }
         }
     }
@@ -183,66 +198,10 @@ fun PaymentTopBar(
         }
         Text(
             text = timeLeft,
-            color = Color(0xFFE53935), // Red color for timer
+            color = Color(0xFFE53935),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
-    }
-}
-
-@Composable
-fun PaymentMovieInfo(
-    title: String,
-    age: String,
-    posterUrl: String,
-    tags: List<String>,
-    ageNote: String,
-    duration: String,
-    seat: String
-) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        AsyncImage(
-            model = posterUrl,
-            contentDescription = null,
-            placeholder = painterResource(id = R.drawable.ic_launcher_background),
-            modifier = Modifier
-                .width(90.dp)
-                .height(130.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            Text(
-                text = "$title ($age)",
-                color = Color.White,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                tags.forEach { tag ->
-                    val isAgeTag = tag == "T16" || tag == "T18" || tag == "P"
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (isAgeTag) Color(0xFFFFAA00) else Color.Transparent,
-                        border = if (!isAgeTag) BorderStroke(1.dp, CyanBlue) else null
-                    ) {
-                        Text(
-                            text = tag,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = ageNote, color = Color(0xFFE53935), fontSize = 12.sp)
-            Text(text = "Thời lượng : $duration", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-            Text(text = seat, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-        }
     }
 }
 
@@ -257,59 +216,83 @@ fun PaymentDetailsCard(
         color = Color(0xFF21212B)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // PHẦN THÔNG TIN VÉ
+
+            // THÔNG TIN VÉ
             SectionTitle("THÔNG TIN VÉ")
-            
-            Row(
-                modifier = Modifier.padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                uiState.selectedSeats.forEach { seatCode ->
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, Color.White),
-                        color = Color.Transparent
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+            if (uiState.selectedSeats.isEmpty()) {
+                Text(
+                    text = "Chưa chọn ghế",
+                    color = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                Row(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    uiState.selectedSeats.forEach { seatCode ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color.White),
+                            color = Color.Transparent
                         ) {
-                            Text(text = seatCode, color = Color.White, fontSize = 13.sp)
                             Text(
-                                text = formatPrice(uiState.ticketPricePerSeat).removeSuffix(" đ"), 
-                                color = Color.White, 
-                                fontSize = 11.sp
+                                text = seatCode,
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // PHẦN THÔNG TIN BẮP NƯỚC
-            SectionTitle("THÔNG TIN BẮP NƯỚC")
-            
-            Row(
-                verticalAlignment = Alignment.CenterVertically, 
-                modifier = Modifier.padding(vertical = 12.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.pepsi),
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)),
-                    contentScale = ContentScale.Fit
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(text = uiState.concessionName, color = Color.White, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                Text(text = uiState.concessionQuantity.toString(), color = Color.White, fontSize = 14.sp)
-            }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
-            InfoRow("Tổng", formatPrice(uiState.concessionTotal))
-            
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            // PHẦN VOUCHER
+            // THÔNG TIN BẮP NƯỚC
+            SectionTitle("THÔNG TIN BẮP NƯỚC")
+            if (uiState.concessionSummary.isEmpty()) {
+                Text(
+                    text = "Không có đồ ăn",
+                    color = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                uiState.concessionSummary.filter { it.quantity > 0 }.forEach { item ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 6.dp)
+                    ) {
+                        AsyncImage(
+                            model = item.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            contentScale = ContentScale.Fit,
+                            error = painterResource(id = R.drawable.ic_launcher_background)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = item.name,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "x${item.quantity}",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
+            InfoRow("Tổng bắp nước", formatPrice(uiState.concessionTotal))
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // VOUCHER
             SectionTitle("VOUCHER")
             Row(
                 modifier = Modifier
@@ -327,7 +310,7 @@ fun PaymentDetailsCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = uiState.selectedVoucherName ?: "Chọn voucher",
-                    color = Color.White,
+                    color = if (uiState.selectedVoucherName != null) CyanBlue else Color.White,
                     fontSize = 14.sp,
                     modifier = Modifier.weight(1f)
                 )
@@ -339,14 +322,13 @@ fun PaymentDetailsCard(
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
 
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // PHẦN TỔNG KẾT THANH TOÁN
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // TỔNG KẾT
             SectionTitle("THANH TOÁN")
-            
             InfoRow("Tổng cộng", formatPrice(uiState.totalAmount))
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
-            InfoRow("Khuyến mãi", formatPrice(uiState.discount))
+            InfoRow("Khuyến mãi", "- ${formatPrice(uiState.discount)}")
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
             InfoRow("Còn lại", formatPrice(uiState.finalAmount), isHighlight = true)
         }
@@ -355,7 +337,10 @@ fun PaymentDetailsCard(
 
 @Composable
 fun SectionTitle(title: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Text(
             text = title,
             color = CyanBlue,
@@ -379,9 +364,9 @@ fun InfoRow(label: String, value: String, isHighlight: Boolean = false) {
     ) {
         Text(text = label, color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
         Text(
-            text = value, 
-            color = Color.White, 
-            fontSize = 14.sp,
+            text = value,
+            color = if (isHighlight) CyanBlue else Color.White,
+            fontSize = if (isHighlight) 16.sp else 14.sp,
             fontWeight = if (isHighlight) FontWeight.Bold else FontWeight.Normal
         )
     }
