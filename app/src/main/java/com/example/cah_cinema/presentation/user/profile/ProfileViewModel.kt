@@ -2,6 +2,7 @@ package com.example.cah_cinema.presentation.user.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cah_cinema.data.model.Invoice
 import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.util.ImageUrls
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,14 +31,19 @@ data class ProfileState(
     val rank: String = "",
     val role: String = "ROLE_USER",
     val recentTicket: TicketInfo? = null,
+    // Tất cả invoices từ API (tối đa 5 từ /users/me)
+    val allInvoices: List<Invoice> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val showDeleteConfirm: Boolean = false
 )
 
 sealed class ProfileEvent {
     object Logout : ProfileEvent()
     object ChangePassword : ProfileEvent()
     object DeleteAccount : ProfileEvent()
+    object ConfirmDeleteAccount : ProfileEvent()
+    object CancelDeleteAccount : ProfileEvent()
     object EditProfile : ProfileEvent()
     object ViewAllTickets : ProfileEvent()
     object ViewTicketDetail : ProfileEvent()
@@ -52,58 +58,51 @@ class ProfileViewModel : ViewModel() {
     }
 
     fun loadProfileData() {
-        // MOCK DATA FOR ADMIN TESTING
-        if (RetrofitClient.getToken() == "mock_admin_token") {
-            _state.update { it.copy(
-                userName = "Admin CAH",
-                email = "admin@cah.com",
-                role = "ROLE_ADMIN",
-                rank = "Administrator",
-                isLoading = false
-            ) }
-            return
-        }
-
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
                 val response = RetrofitClient.apiService.getMyProfile()
                 if (response.isSuccessful) {
-                    val apiResponse = response.body()
-                    val profileData = apiResponse?.data
+                    val profileData = response.body()?.data
                     if (profileData != null) {
                         val user = profileData.user
-                        val recentInvoice = profileData.recentInvoices.firstOrNull()
-                        
-                        _state.update { it.copy(
-                            userName = user.name,
-                            email = user.email,
-                            phone = user.phone ?: "",
-                            avatarUrl = user.avatarUrl ?: ImageUrls.MOCK_AVATAR,
-                            loyaltyPoints = user.totalPoint,
-                            rank = user.rankLevel,
-                            role = user.role,
-                            recentTicket = recentInvoice?.let { invoice ->
-                                val seatDisplay = invoice.seats
-                                    ?.map { s ->
-                                        val row = ('A' + (s.seatRow.toInt() - 1)).toString()
-                                        val col = s.seatCol.toInt().toString().padStart(2, '0')
-                                        "$row$col"
-                                    }
-                                    ?.joinToString(", ") ?: ""
-                                TicketInfo(
-                                    movieTitle = invoice.movieTitle,
-                                    cinemaName = invoice.cinemaName,
-                                    showTime = invoice.startTime,
-                                    seat = seatDisplay,
-                                    posterUrl = invoice.moviePosterUrl,
-                                    bookingId = invoice.bookingId,
-                                    roomName = invoice.roomName ?: "",
-                                    totalPrice = invoice.totalPrice
-                                )
-                            },
-                            isLoading = false
-                        ) }
+                        val invoices = profileData.recentInvoices
+                        val recentInvoice = invoices.firstOrNull()
+
+                        _state.update {
+                            it.copy(
+                                userName = user.name,
+                                email = user.email,
+                                phone = user.phone ?: "",
+                                avatarUrl = user.avatarUrl ?: ImageUrls.MOCK_AVATAR,
+                                loyaltyPoints = user.totalPoint,
+                                rank = user.rankLevel,
+                                role = user.role,
+                                allInvoices = invoices,
+                                recentTicket = recentInvoice?.let { invoice ->
+                                    val seatDisplay = invoice.seats
+                                        ?.map { s ->
+                                            val row = ('A' + (s.seatRow.toInt() - 1)).toString()
+                                            val col = s.seatCol.toInt().toString().padStart(2, '0')
+                                            "$row$col"
+                                        }
+                                        ?.joinToString(", ") ?: ""
+                                    TicketInfo(
+                                        movieTitle = invoice.movieTitle,
+                                        cinemaName = invoice.cinemaName,
+                                        showTime = invoice.startTime,
+                                        seat = seatDisplay,
+                                        posterUrl = invoice.moviePosterUrl,
+                                        bookingId = invoice.bookingId,
+                                        roomName = invoice.roomName ?: "",
+                                        totalPrice = invoice.totalPrice
+                                    )
+                                },
+                                isLoading = false
+                            )
+                        }
+                    } else {
+                        _state.update { it.copy(isLoading = false) }
                     }
                 } else {
                     _state.update { it.copy(isLoading = false, errorMessage = "Không thể tải hồ sơ") }
@@ -116,22 +115,47 @@ class ProfileViewModel : ViewModel() {
 
     fun onEvent(event: ProfileEvent) {
         when (event) {
-            ProfileEvent.Logout -> {
-            }
-            ProfileEvent.ChangePassword -> {
-            }
             ProfileEvent.DeleteAccount -> {
+                // Hiện dialog xác nhận
+                _state.update { it.copy(showDeleteConfirm = true) }
             }
-            ProfileEvent.EditProfile -> {
+            ProfileEvent.ConfirmDeleteAccount -> {
+                _state.update { it.copy(showDeleteConfirm = false) }
+                // Backend chưa có API xóa tài khoản — chỉ logout
+                RetrofitClient.setToken(null)
             }
-            ProfileEvent.ViewAllTickets -> {
+            ProfileEvent.CancelDeleteAccount -> {
+                _state.update { it.copy(showDeleteConfirm = false) }
             }
-            ProfileEvent.ViewTicketDetail -> {
-            }
+            else -> { /* Handled in UI layer via callbacks */ }
         }
     }
 
     fun updateRecentTicket(ticket: TicketInfo) {
         _state.update { it.copy(recentTicket = ticket) }
+    }
+
+    fun setSelectedInvoice(invoice: Invoice) {
+        val seatDisplay = invoice.seats
+            ?.map { s ->
+                val row = ('A' + (s.seatRow.toInt() - 1)).toString()
+                val col = s.seatCol.toInt().toString().padStart(2, '0')
+                "$row$col"
+            }
+            ?.joinToString(", ") ?: ""
+        _state.update {
+            it.copy(
+                recentTicket = TicketInfo(
+                    movieTitle = invoice.movieTitle,
+                    cinemaName = invoice.cinemaName,
+                    showTime = invoice.startTime,
+                    seat = seatDisplay,
+                    posterUrl = invoice.moviePosterUrl,
+                    bookingId = invoice.bookingId,
+                    roomName = invoice.roomName ?: "",
+                    totalPrice = invoice.totalPrice
+                )
+            )
+        }
     }
 }

@@ -42,6 +42,7 @@ sealed class Screen(val route: String) {
     object ChangePassword : Screen("change_password")
     object EditProfile : Screen("edit_profile")
     object TicketDetail : Screen("ticket_detail")
+    object BookingHistory : Screen("booking_history")
     object PaymentLoading : Screen("payment_loading")
     object UpcomingMovies : Screen("upcoming_movies")
     object Voucher : Screen("voucher/{totalAmount}") {

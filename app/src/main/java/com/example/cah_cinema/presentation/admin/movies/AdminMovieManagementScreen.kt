@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,12 +25,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cah_cinema.data.model.Genre
-import com.example.cah_cinema.data.model.MovieDetail
 import com.example.cah_cinema.data.model.MovieListItem
 import com.example.cah_cinema.data.model.UpdateOrCreateMovieRequest
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
@@ -43,7 +44,6 @@ fun AdminMovieManagementScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingMovie by remember { mutableStateOf<MovieListItem?>(null) }
 
-    // Snackbar cho success/error
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(state.successMessage) {
         state.successMessage?.let {
@@ -63,8 +63,9 @@ fun AdminMovieManagementScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
+            // Header row - fix layout overflow
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -73,21 +74,30 @@ fun AdminMovieManagementScreen(
                 Text(
                     text = "Danh sách phim (${state.movies.size})",
                     color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = { showAddDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("THÊM PHIM MỚI", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "THÊM PHIM",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        maxLines = 1
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (state.isLoading && state.movies.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -99,13 +109,13 @@ fun AdminMovieManagementScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF1C1C22), RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                        .padding(16.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("PHIM", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(3f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("THỜI LƯỢNG", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("ĐỘ TUỔI", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("THAO TÁC", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text("PHIM", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(3f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("THỜI LƯỢNG", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("ĐỘ TUỔI", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("THAO TÁC", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
 
                 LazyColumn(
@@ -133,9 +143,13 @@ fun AdminMovieManagementScreen(
             title = "Thêm phim mới",
             genres = state.genres,
             isUploading = state.isUploading,
+            isUploadingVideo = state.isUploadingVideo,
             onDismiss = { showAddDialog = false },
             onUploadImage = { context, uri, callback ->
                 viewModel.uploadPosterImage(context, uri, callback)
+            },
+            onUploadVideo = { context, uri, callback ->
+                viewModel.uploadTrailerVideo(context, uri, callback)
             },
             onConfirm = { request ->
                 viewModel.createMovie(request) { showAddDialog = false }
@@ -149,10 +163,14 @@ fun AdminMovieManagementScreen(
             title = "Sửa phim",
             genres = state.genres,
             isUploading = state.isUploading,
+            isUploadingVideo = state.isUploadingVideo,
             initialData = movie,
             onDismiss = { editingMovie = null },
             onUploadImage = { context, uri, callback ->
                 viewModel.uploadPosterImage(context, uri, callback)
+            },
+            onUploadVideo = { context, uri, callback ->
+                viewModel.uploadTrailerVideo(context, uri, callback)
             },
             onConfirm = { request ->
                 viewModel.updateMovie(movie.id, request) { editingMovie = null }
@@ -167,9 +185,11 @@ fun MovieFormDialog(
     title: String,
     genres: List<Genre>,
     isUploading: Boolean,
+    isUploadingVideo: Boolean = false,
     initialData: MovieListItem? = null,
     onDismiss: () -> Unit,
     onUploadImage: (android.content.Context, Uri, (String?) -> Unit) -> Unit,
+    onUploadVideo: (android.content.Context, Uri, (String?) -> Unit) -> Unit = { _, _, _ -> },
     onConfirm: (UpdateOrCreateMovieRequest) -> Unit
 ) {
     val context = LocalContext.current
@@ -189,13 +209,24 @@ fun MovieFormDialog(
     var ageRatingExpanded by remember { mutableStateOf(false) }
     val ageRatings = listOf("P", "T13", "T16", "T18")
 
-    // Image picker launcher
+    // Image picker
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             onUploadImage(context, it) { url ->
                 if (url != null) posterUrl = url
+            }
+        }
+    }
+
+    // Video picker
+    val videoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            onUploadVideo(context, it) { url ->
+                if (url != null) trailerUrl = url
             }
         }
     }
@@ -258,7 +289,7 @@ fun MovieFormDialog(
                 AdminTextField(value = directorName, onValueChange = { directorName = it }, label = "Đạo diễn")
                 AdminTextField(value = actorList, onValueChange = { actorList = it }, label = "Diễn viên")
 
-                // Poster URL + nút upload ảnh
+                // ── Poster ──
                 Text("Poster", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -279,28 +310,19 @@ fun MovieFormDialog(
                             unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
                         )
                     )
-                    // Nút chọn ảnh từ thiết bị → upload Cloudinary
                     IconButton(
                         onClick = { imageLauncher.launch("image/*") },
-                        enabled = !isUploading
+                        enabled = !isUploading && !isUploadingVideo
                     ) {
                         if (isUploading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = CyanBlue,
-                                strokeWidth = 2.dp
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = CyanBlue, strokeWidth = 2.dp)
                         } else {
-                            Icon(
-                                imageVector = Icons.Default.Image,
-                                contentDescription = "Chọn ảnh",
-                                tint = CyanBlue
-                            )
+                            Icon(Icons.Default.Image, contentDescription = "Chọn ảnh poster", tint = CyanBlue)
                         }
                     }
                 }
 
-                // Preview poster nếu có URL
+                // Preview poster
                 if (posterUrl.isNotEmpty()) {
                     AsyncImage(
                         model = posterUrl,
@@ -313,7 +335,54 @@ fun MovieFormDialog(
                     )
                 }
 
-                AdminTextField(value = trailerUrl, onValueChange = { trailerUrl = it }, label = "Link Trailer (YouTube)")
+                // ── Trailer ──
+                Text("Trailer", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = trailerUrl,
+                        onValueChange = { trailerUrl = it },
+                        label = { Text("URL Trailer") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = CyanBlue,
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                            focusedBorderColor = CyanBlue,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
+                        )
+                    )
+                    // Nút upload video lên Cloudinary
+                    IconButton(
+                        onClick = { videoLauncher.launch("video/*") },
+                        enabled = !isUploading && !isUploadingVideo
+                    ) {
+                        if (isUploadingVideo) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = CyanBlue, strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.VideoFile, contentDescription = "Upload video trailer", tint = CyanBlue)
+                        }
+                    }
+                }
+
+                // Trạng thái upload video
+                if (isUploadingVideo) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = CyanBlue, strokeWidth = 2.dp)
+                        Text(
+                            "Đang upload video lên Cloudinary...",
+                            color = CyanBlue,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
 
                 // Thể loại
                 Text("Thể loại", color = Color.White, fontSize = 14.sp)
@@ -356,7 +425,7 @@ fun MovieFormDialog(
                     )
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-                enabled = movieTitle.isNotBlank() && selectedGenreIds.isNotEmpty() && !isUploading
+                enabled = movieTitle.isNotBlank() && selectedGenreIds.isNotEmpty() && !isUploading && !isUploadingVideo
             ) {
                 Text("XÁC NHẬN", color = Color.Black, fontWeight = FontWeight.Bold)
             }
@@ -404,7 +473,7 @@ fun MovieRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(modifier = Modifier.weight(3f), verticalAlignment = Alignment.CenterVertically) {
@@ -412,38 +481,39 @@ fun MovieRow(
                 model = movie.posterUrl,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(44.dp, 64.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .size(36.dp, 52.dp)
+                    .clip(RoundedCornerShape(6.dp)),
                 contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = movie.title,
                 color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
         Text(
             text = "${movie.duration} phút",
             color = Color.White.copy(alpha = 0.6f),
             modifier = Modifier.weight(2f),
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodySmall
         )
         Text(
             text = movie.ageRating,
             color = CyanBlue,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold
         )
-        Row(modifier = Modifier.weight(2f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Sửa", tint = CyanBlue.copy(alpha = 0.8f))
+        Row(modifier = Modifier.weight(2f), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Edit, contentDescription = "Sửa", tint = CyanBlue.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Xóa", tint = Color.Red.copy(alpha = 0.7f))
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "Xóa", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.example.cah_cinema.presentation.user.detail
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -21,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,6 +65,13 @@ fun MovieDetailScreen(
                     MovieDetailsSection(movie = movie)
                 }
 
+                // Trailer section - hiển thị nếu có trailerUrl
+                if (!movie.trailerUrl.isNullOrBlank()) {
+                    item {
+                        TrailerSection(trailerUrl = movie.trailerUrl)
+                    }
+                }
+
                 if (state.availableDates.isNotEmpty()) {
                     item {
                         DateSelectionSection(
@@ -82,6 +93,77 @@ fun MovieDetailScreen(
 
                 item {
                     Spacer(modifier = Modifier.height(32.dp))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Section hiển thị nút xem trailer.
+ * Nếu URL là Cloudinary video → mở bằng Intent trình phát video.
+ * Nếu URL là YouTube → mở YouTube app/browser.
+ */
+@Composable
+fun TrailerSection(trailerUrl: String) {
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = "Trailer",
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(trailerUrl))
+                    context.startActivity(intent)
+                },
+            color = Color(0xFF1C1C22),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                // Thumbnail placeholder (dùng gradient)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF2D2D35),
+                                    Color(0xFF13131A)
+                                )
+                            )
+                        )
+                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayCircle,
+                        contentDescription = "Xem trailer",
+                        tint = CyanBlue,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Xem Trailer",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }

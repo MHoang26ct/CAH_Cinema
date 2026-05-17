@@ -24,6 +24,9 @@ interface ApiService {
     @POST("api/v1/auth/fp-change-password")
     suspend fun changeForgotPassword(@Body request: ResetPasswordRequest): Response<BaseResponse<Unit>>
 
+    @POST("api/v1/auth/change-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): Response<BaseResponse<Unit>>
+
     // 2. Movies
     @GET("api/v1/public/movies/featured")
     suspend fun getFeaturedMovies(): Response<BaseResponse<FeaturedMoviesData>>

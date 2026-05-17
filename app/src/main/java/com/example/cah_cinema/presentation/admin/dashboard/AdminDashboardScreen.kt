@@ -3,10 +3,12 @@ package com.example.cah_cinema.presentation.admin.dashboard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,35 +19,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.data.model.BusinessOverviewResponse
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.presentation.admin.components.AdminStatCard
-import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
+import com.example.cah_cinema.presentation.user.booking.formatPrice
 
 @Composable
 fun AdminDashboardScreen(
     viewModel: AdminDashboardViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
-
-    AdminDashboardContent(
-        state = state
-    )
+    AdminDashboardContent(state = state)
 }
 
 @Composable
-fun AdminDashboardContent(
-    state: AdminDashboardState,
-) {
-    AdminScaffold(
-        title = "Tổng quan kinh doanh"
-    ) { paddingValues ->
+fun AdminDashboardContent(state: AdminDashboardState) {
+    AdminScaffold(title = "Tổng quan kinh doanh") { paddingValues ->
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color.Cyan)
+                CircularProgressIndicator(color = Color(0xFF00BCD4))
             }
         } else {
             Column(
@@ -53,73 +46,69 @@ fun AdminDashboardContent(
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Text(
-                    text = "Thống kê hôm nay",
+                    text = "Thống kê 30 ngày gần nhất",
                     color = Color.White,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 20.dp)
+                    fontWeight = FontWeight.Bold
                 )
 
+                // Responsive grid: 2 cột trên phone, 4 cột trên tablet/landscape
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
+                    columns = GridCells.Adaptive(minSize = 220.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    // Không dùng fillMaxSize trong scroll — dùng wrapContentHeight
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 100.dp, max = 400.dp)
                 ) {
                     item {
                         AdminStatCard(
-                            title = "Doanh thu",
-                            value = "${state.overview?.totalRevenue ?: 0} đ",
+                            title = "Tổng doanh thu",
+                            value = formatPrice(state.overview?.totalRevenue ?: 0.0),
                             icon = Icons.Default.AttachMoney,
                             color = Color(0xFF4CAF50)
                         )
                     }
                     item {
                         AdminStatCard(
-                            title = "Vé đã bán",
-                            value = "${state.overview?.ticketsSold ?: 0}",
+                            title = "Doanh thu vé",
+                            value = formatPrice(state.overview?.ticketRevenue ?: 0.0),
                             icon = Icons.Default.ConfirmationNumber,
                             color = Color(0xFF2196F3)
                         )
                     }
                     item {
                         AdminStatCard(
-                            title = "Phim đang chiếu",
-                            value = "${state.overview?.activeMovies ?: 0}",
-                            icon = Icons.Default.Movie,
+                            title = "Doanh thu đồ ăn",
+                            value = formatPrice(state.overview?.foodRevenue ?: 0.0),
+                            icon = Icons.Default.Restaurant,
                             color = Color(0xFFFF9800)
                         )
                     }
                     item {
                         AdminStatCard(
-                            title = "Khách hàng mới",
-                            value = "24",
-                            icon = Icons.Default.Person,
+                            title = "Vé đã bán",
+                            value = "${state.overview?.ticketsSold ?: 0} vé",
+                            icon = Icons.Default.Movie,
                             color = Color(0xFF9C27B0)
                         )
                     }
                 }
+
+                // Thông báo nếu chưa có dữ liệu
+                if (state.overview == null && !state.isLoading) {
+                    Text(
+                        text = state.errorMessage ?: "Không có dữ liệu thống kê",
+                        color = Color.White.copy(alpha = 0.5f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
-    }
-}
-
-@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
-@Composable
-fun AdminDashboardPreview() {
-    CAH_CinemaTheme {
-        AdminDashboardContent(
-            state = AdminDashboardState(
-                overview = BusinessOverviewResponse(
-                    totalRevenue = 25000000.0,
-                    ticketRevenue = 20000000.0,
-                    foodRevenue = 5000000.0,
-                    ticketsSold = 350,
-                    activeMovies = 12
-                ),
-                isLoading = false
-            )
-        )
     }
 }

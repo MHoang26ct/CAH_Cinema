@@ -72,7 +72,8 @@ class MovieDetailViewModel(
             director = this.directorName ?: "",
             cast = this.actorList ?: "",
             description = this.description,
-            format = "2D"
+            format = "2D",
+            trailerUrl = this.trailerUrl
         )
     }
 

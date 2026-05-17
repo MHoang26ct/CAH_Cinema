@@ -38,3 +38,8 @@ data class ResetPasswordRequest(
     @SerializedName("newPassword") val newPassword: String,
     @SerializedName("resetToken") val resetToken: String
 )
+
+data class ChangePasswordRequest(
+    @SerializedName("oldPassword") val oldPassword: String,
+    @SerializedName("newPassword") val newPassword: String
+)

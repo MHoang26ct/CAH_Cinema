@@ -23,6 +23,7 @@ data class AdminMovieState(
     val genres: List<Genre> = emptyList(),
     val isLoading: Boolean = false,
     val isUploading: Boolean = false,
+    val isUploadingVideo: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null
 )
@@ -77,6 +78,24 @@ class AdminMovieViewModel(
                 onSuccess = { url -> onResult(url) },
                 onFailure = {
                     _state.update { s -> s.copy(errorMessage = "Upload ảnh thất bại: ${it.message}") }
+                    onResult(null)
+                }
+            )
+        }
+    }
+
+    /**
+     * Upload video trailer lên Cloudinary, trả về URL qua callback.
+     */
+    fun uploadTrailerVideo(context: Context, videoUri: Uri, onResult: (String?) -> Unit) {
+        _state.update { it.copy(isUploadingVideo = true) }
+        viewModelScope.launch {
+            val result = CloudinaryUploader.uploadVideo(context, videoUri)
+            _state.update { it.copy(isUploadingVideo = false) }
+            result.fold(
+                onSuccess = { url -> onResult(url) },
+                onFailure = {
+                    _state.update { s -> s.copy(errorMessage = "Upload video thất bại: ${it.message}") }
                     onResult(null)
                 }
             )

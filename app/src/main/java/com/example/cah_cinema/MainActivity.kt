@@ -44,6 +44,7 @@ import com.example.cah_cinema.presentation.user.booking.PaymentViewModel
 import com.example.cah_cinema.presentation.user.profile.ChangePasswordScreen
 import com.example.cah_cinema.presentation.user.profile.EditProfileScreen
 import com.example.cah_cinema.presentation.user.profile.TicketDetailScreen
+import com.example.cah_cinema.presentation.user.profile.BookingHistoryScreen
 import com.example.cah_cinema.presentation.user.booking.PaymentLoadingScreen
 import com.example.cah_cinema.presentation.user.home.UpcomingMoviesScreen
 import com.example.cah_cinema.presentation.user.splash.SplashScreen
@@ -346,6 +347,9 @@ class MainActivity : ComponentActivity() {
                                             onNavigateToEditProfile = {
                                                 navController.navigate(Screen.EditProfile.route)
                                             },
+                                            onNavigateToAllTickets = {
+                                                navController.navigate(Screen.BookingHistory.route)
+                                            },
                                             onNavigateToTicketDetail = {
                                                 navController.navigate(Screen.TicketDetail.route)
                                             },
@@ -356,6 +360,18 @@ class MainActivity : ComponentActivity() {
                                                 navController.navigate(Screen.Login.route) {
                                                     popUpTo(0) { inclusive = true }
                                                 }
+                                            }
+                                        )
+                                    }
+
+                                    composable(Screen.BookingHistory.route) {
+                                        val viewModel: ProfileViewModel = viewModel()
+                                        BookingHistoryScreen(
+                                            viewModel = viewModel,
+                                            onBackClick = { navController.popBackStack() },
+                                            onTicketClick = { invoice ->
+                                                viewModel.setSelectedInvoice(invoice)
+                                                navController.navigate(Screen.TicketDetail.route)
                                             }
                                         )
                                     }
