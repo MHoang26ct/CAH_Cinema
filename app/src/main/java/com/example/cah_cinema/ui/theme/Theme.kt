@@ -1,6 +1,5 @@
 package com.example.cah_cinema.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +21,7 @@ private val LightColorScheme = lightColorScheme(
     secondary = PurpleGrey40,
     tertiary = Pink40
 
-    /* Other default colors to override
+    /* Các màu mặc định khác để ghi đè
     background = Color(0xFFFFFBFE),
     surface = Color(0xFFFFFBFE),
     onPrimary = Color.White,
@@ -36,7 +35,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun CAH_CinemaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
+    // Màu động có sẵn trên Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {

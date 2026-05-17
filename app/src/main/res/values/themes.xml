@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Theme.CAH_Cinema" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#13131A</item>
+        <item name="android:windowBackground">#13131A</item>
+    </style>
 
-    <style name="Theme.CAH_Cinema" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Theme for Android 12+ Splash Screen -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/bg_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.CAH_Cinema</item>
+    </style>
 </resources>
