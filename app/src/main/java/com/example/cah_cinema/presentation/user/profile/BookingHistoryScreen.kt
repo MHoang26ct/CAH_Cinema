@@ -25,6 +25,7 @@ import coil.compose.AsyncImage
 import com.example.cah_cinema.R
 import com.example.cah_cinema.data.model.Invoice
 import com.example.cah_cinema.ui.theme.CyanBlue
+import com.example.cah_cinema.util.DateTimeUtils
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -161,7 +162,7 @@ fun InvoiceCard(
                     Icon(Icons.Default.AccessTime, contentDescription = null, tint = CyanBlue, modifier = Modifier.size(12.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = invoice.startTime.replace("T", " ").take(16),
+                        text = DateTimeUtils.formatDateTime(invoice.startTime),
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 11.sp
                     )

@@ -43,3 +43,7 @@ data class ChangePasswordRequest(
     @SerializedName("oldPassword") val oldPassword: String,
     @SerializedName("newPassword") val newPassword: String
 )
+
+data class GoogleLoginRequest(
+    @SerializedName("idToken") val idToken: String
+)

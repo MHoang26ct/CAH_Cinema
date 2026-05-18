@@ -3,141 +3,146 @@ package com.example.cah_cinema.data.repository
 import com.example.cah_cinema.data.model.*
 import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.domain.repository.AdminRepository
+import retrofit2.Response
 
 class AdminRepositoryImpl : AdminRepository {
-    override suspend fun getBusinessOverview(from: String, to: String): BaseResponse<BusinessOverviewResponse>? {
-        return RetrofitClient.apiService.getBusinessOverview(from, to).body()
+
+    private fun <T> handle(r: Response<BaseResponse<T>>): BaseResponse<T>? {
+        return if (r.isSuccessful) {
+            val body = r.body()
+            if (body != null && body.code == 0) body.copy(code = r.code()) else body
+        } else {
+            BaseResponse(r.code(), r.message(), null)
+        }
     }
 
-    override suspend fun getDailyRevenue(from: String, to: String): BaseResponse<List<DailyRevenueResponse>>? {
-        return RetrofitClient.apiService.getDailyRevenue(from, to).body()
-    }
+    // ── Reports ──────────────────────────────────────────────────────────────
 
-    override suspend fun getMovieRevenue(from: String, to: String): BaseResponse<List<MovieRevenueResponse>>? {
-        return RetrofitClient.apiService.getMovieRevenue(from, to).body()
-    }
+    override suspend fun getBusinessOverview(from: String, to: String): BaseResponse<BusinessOverviewResponse>? =
+        handle(RetrofitClient.apiService.getBusinessOverview(from, to))
 
-    override suspend fun getCinemaRevenue(from: String, to: String): BaseResponse<List<CinemaRevenueResponse>>? {
-        return RetrofitClient.apiService.getCinemaRevenue(from, to).body()
-    }
+    override suspend fun getDailyRevenue(from: String, to: String): BaseResponse<List<DailyRevenueResponse>>? =
+        handle(RetrofitClient.apiService.getDailyRevenue(from, to))
 
-    override suspend fun createMovie(request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>? {
-        return RetrofitClient.apiService.createMovie(request).body()
-    }
+    override suspend fun getMovieRevenue(from: String, to: String): BaseResponse<List<MovieRevenueResponse>>? =
+        handle(RetrofitClient.apiService.getMovieRevenue(from, to))
 
-    override suspend fun updateMovie(id: Long, request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>? {
-        return RetrofitClient.apiService.updateMovie(id, request).body()
-    }
+    override suspend fun getCinemaRevenue(from: String, to: String): BaseResponse<List<CinemaRevenueResponse>>? =
+        handle(RetrofitClient.apiService.getCinemaRevenue(from, to))
 
-    override suspend fun deleteMovie(id: Long): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.deleteMovie(id).body()
-    }
+    // ── Movies ───────────────────────────────────────────────────────────────
 
-    override suspend fun getMovies(): BaseResponse<MoviePageData>? {
-        return RetrofitClient.apiService.getMovies().body()
-    }
+    override suspend fun getMovies(page: Int, size: Int, sort: String?): BaseResponse<MoviePageData>? =
+        handle(RetrofitClient.apiService.getMovies(page = page, size = size, sort = sort))
 
-    override suspend fun getCinemas(): BaseResponse<List<CinemaItem>>? {
-        return RetrofitClient.apiService.getCinemas().body()
-    }
+    override suspend fun createMovie(request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>? =
+        handle(RetrofitClient.apiService.createMovie(request))
 
-    override suspend fun getCinemaDetail(cinemaId: Long): BaseResponse<CinemaItem>? {
-        return RetrofitClient.apiService.getCinemaDetail(cinemaId).body()
-    }
+    override suspend fun updateMovie(id: Long, request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>? =
+        handle(RetrofitClient.apiService.updateMovie(id, request))
 
-    override suspend fun createCinema(request: CreateCinemaRequest): BaseResponse<CinemaItem>? {
-        return RetrofitClient.apiService.createCinema(request).body()
-    }
+    override suspend fun deleteMovie(id: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteMovie(id))
 
-    override suspend fun updateCinema(cinemaId: Long, request: CreateCinemaRequest): BaseResponse<CinemaItem>? {
-        return RetrofitClient.apiService.updateCinema(cinemaId, request).body()
-    }
+    // ── Cinemas ──────────────────────────────────────────────────────────────
 
-    override suspend fun deleteCinema(id: Long): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.deleteCinema(id).body()
-    }
+    override suspend fun getCinemas(): BaseResponse<List<CinemaItem>>? =
+        handle(RetrofitClient.apiService.getCinemas())
 
-    override suspend fun getRoomsByCinema(cinemaId: Long): BaseResponse<List<RoomItem>>? {
-        return RetrofitClient.apiService.getRoomsByCinema(cinemaId).body()
-    }
+    override suspend fun getCinemaDetail(cinemaId: Long): BaseResponse<CinemaItem>? =
+        handle(RetrofitClient.apiService.getCinemaDetail(cinemaId))
 
-    override suspend fun createRoom(cinemaId: Long, request: CreateRoomRequest): BaseResponse<RoomItem>? {
-        return RetrofitClient.apiService.createRoom(cinemaId, request).body()
-    }
+    override suspend fun createCinema(request: CreateCinemaRequest): BaseResponse<CinemaItem>? =
+        handle(RetrofitClient.apiService.createCinema(request))
 
-    override suspend fun updateRoom(roomId: Long, request: CreateRoomRequest): BaseResponse<RoomItem>? {
-        return RetrofitClient.apiService.updateRoom(roomId, request).body()
-    }
+    override suspend fun updateCinema(cinemaId: Long, request: CreateCinemaRequest): BaseResponse<CinemaItem>? =
+        handle(RetrofitClient.apiService.updateCinema(cinemaId, request))
 
-    override suspend fun deleteRoom(roomId: Long): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.deleteRoom(roomId).body()
-    }
+    override suspend fun deleteCinema(id: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteCinema(id))
 
-    override suspend fun getShowtimesByCinema(cinemaId: Long, date: String): BaseResponse<List<CinemaShowtimeItem>>? {
-        return RetrofitClient.apiService.getShowtimesByCinema(cinemaId, date).body()
-    }
+    override suspend fun getRoomsByCinema(cinemaId: Long): BaseResponse<List<RoomItem>>? =
+        handle(RetrofitClient.apiService.getRoomsByCinema(cinemaId))
 
-    override suspend fun createShowtime(request: CreateShowtimeRequest): BaseResponse<ShowtimeInfo>? {
-        return RetrofitClient.apiService.createShowtime(request).body()
-    }
+    override suspend fun createRoom(cinemaId: Long, request: CreateRoomRequest): BaseResponse<RoomItem>? =
+        handle(RetrofitClient.apiService.createRoom(cinemaId, request))
 
-    override suspend fun updateShowtime(request: UpdateShowtimeRequest): BaseResponse<ShowtimeInfo>? {
-        return RetrofitClient.apiService.updateShowtime(request).body()
-    }
+    override suspend fun updateRoom(roomId: Long, request: CreateRoomRequest): BaseResponse<RoomItem>? =
+        handle(RetrofitClient.apiService.updateRoom(roomId, request))
 
-    override suspend fun deleteShowtime(id: Long): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.deleteShowtime(id).body()
-    }
+    override suspend fun deleteRoom(roomId: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteRoom(roomId))
 
-    override suspend fun getAllVouchers(page: Int): BaseResponse<List<VoucherItem>>? {
-        return RetrofitClient.apiService.getAllVouchers(page).body()
-    }
+    // ── Showtimes ────────────────────────────────────────────────────────────
 
-    override suspend fun getVoucherDetail(voucherId: Long): BaseResponse<VoucherItem>? {
-        return RetrofitClient.apiService.getVoucherDetail(voucherId).body()
-    }
+    override suspend fun getShowtimesByCinema(cinemaId: Long, date: String): BaseResponse<List<CinemaShowtimeItem>>? =
+        handle(RetrofitClient.apiService.getShowtimesByCinema(cinemaId, date))
 
-    override suspend fun createVoucher(request: CreateVoucherRequest): BaseResponse<VoucherItem>? {
-        return RetrofitClient.apiService.createVoucher(request).body()
-    }
+    override suspend fun createShowtime(request: CreateShowtimeRequest): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.createShowtime(request))
 
-    override suspend fun updateVoucher(request: UpdateVoucherRequest): BaseResponse<VoucherItem>? {
-        return RetrofitClient.apiService.updateVoucher(request).body()
-    }
+    override suspend fun updateShowtime(request: UpdateShowtimeRequest): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.updateShowtime(request))
 
-    override suspend fun deleteVoucher(voucherId: Long): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.deleteVoucher(voucherId).body()
-    }
+    override suspend fun deleteShowtime(id: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteShowtime(id))
 
-    override suspend fun getAllPriceConfigs(): BaseResponse<List<PriceConfig>>? {
-        return RetrofitClient.apiService.getAllPriceConfigs().body()
-    }
+    // ── Vouchers ─────────────────────────────────────────────────────────────
 
-    override suspend fun updatePriceConfig(config: PriceConfig): BaseResponse<PriceConfig>? {
-        return RetrofitClient.apiService.updatePriceConfig(config).body()
-    }
+    override suspend fun getAllVouchers(page: Int): BaseResponse<SliceResponse<VoucherItem>>? =
+        handle(RetrofitClient.apiService.getAllVouchers(page))
 
-    override suspend fun getAllHolidays(): BaseResponse<List<Holiday>>? {
-        return RetrofitClient.apiService.getAllHolidays().body()
-    }
+    override suspend fun getVoucherDetail(voucherId: Long): BaseResponse<VoucherItem>? =
+        handle(RetrofitClient.apiService.getVoucherDetail(voucherId))
 
-    override suspend fun createHoliday(holiday: Holiday): BaseResponse<Holiday>? {
-        return RetrofitClient.apiService.createHoliday(holiday).body()
-    }
+    override suspend fun createVoucher(request: CreateVoucherRequest): BaseResponse<VoucherItem>? =
+        handle(RetrofitClient.apiService.createVoucher(request))
 
-    override suspend fun updateHoliday(holiday: Holiday): BaseResponse<Holiday>? {
-        return RetrofitClient.apiService.updateHoliday(holiday).body()
-    }
+    override suspend fun updateVoucher(request: UpdateVoucherRequest): BaseResponse<VoucherItem>? =
+        handle(RetrofitClient.apiService.updateVoucher(request))
 
-    override suspend fun deleteHoliday(holidayId: Long): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.deleteHoliday(DeleteHolidayRequest(holidayId)).body()
-    }
+    override suspend fun deleteVoucher(voucherId: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteVoucher(voucherId))
 
-    override suspend fun createSeats(request: List<CreateSeatRequest>): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.createSeats(request).body()
-    }
+    // ── Price Config & Holiday ────────────────────────────────────────────────
 
-    override suspend fun deleteSeatsByRoom(roomId: Long): BaseResponse<Unit>? {
-        return RetrofitClient.apiService.deleteSeatsByRoom(roomId).body()
-    }
+    override suspend fun getAllPriceConfigs(): BaseResponse<List<PriceConfig>>? =
+        handle(RetrofitClient.apiService.getAllPriceConfigs())
+
+    override suspend fun updatePriceConfig(config: PriceConfig): BaseResponse<PriceConfig>? =
+        handle(RetrofitClient.apiService.updatePriceConfig(config))
+
+    override suspend fun getAllHolidays(): BaseResponse<List<Holiday>>? =
+        handle(RetrofitClient.apiService.getAllHolidays())
+
+    override suspend fun createHoliday(holiday: Holiday): BaseResponse<Holiday>? =
+        handle(RetrofitClient.apiService.createHoliday(holiday))
+
+    override suspend fun updateHoliday(holiday: Holiday): BaseResponse<Holiday>? =
+        handle(RetrofitClient.apiService.updateHoliday(holiday))
+
+    override suspend fun deleteHoliday(holidayId: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteHoliday(DeleteHolidayRequest(holidayId)))
+
+    // ── Seats ─────────────────────────────────────────────────────────────────
+
+    override suspend fun createSeats(request: List<CreateSeatRequest>): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.createSeats(request))
+
+    override suspend fun deleteSeatsByRoom(roomId: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteSeatsByRoom(roomId))
+
+    // ── Food ──────────────────────────────────────────────────────────────────
+
+    override suspend fun getFoods(): BaseResponse<List<FoodItem>>? =
+        handle(RetrofitClient.apiService.getAdminFoods())
+
+    override suspend fun createFood(request: FoodItem): BaseResponse<FoodItem>? =
+        handle(RetrofitClient.apiService.createFood(request))
+
+    override suspend fun updateFood(id: Long, request: FoodItem): BaseResponse<FoodItem>? =
+        handle(RetrofitClient.apiService.updateFood(id, request))
+
+    override suspend fun deleteFood(id: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deleteFood(id))
 }

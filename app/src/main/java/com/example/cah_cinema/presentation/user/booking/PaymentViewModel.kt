@@ -84,7 +84,7 @@ enum class PaymentMethod(val displayName: String) {
 }
 
 class PaymentViewModel(
-    savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val showtimeId: String = savedStateHandle["showtimeId"] ?: ""
@@ -117,7 +117,50 @@ class PaymentViewModel(
             )
         }
 
+        loadMissingData()
         startTimer()
+    }
+
+    private fun loadMissingData() {
+        val movieIdStr: String? = savedStateHandle["movieId"]
+        val mId = movieIdStr?.toLongOrNull() ?: return
+        val stId = showtimeId.toLongOrNull() ?: return
+
+        viewModelScope.launch {
+            try {
+                val movieResponse = RetrofitClient.apiService.getMovieDetail(mId)
+                if (movieResponse.isSuccessful) {
+                    val movie = movieResponse.body()?.data
+                    _uiState.update { it.copy(
+                        movieTitle = movie?.title ?: "",
+                        posterUrl = movie?.posterUrl ?: "",
+                        movieAge = movie?.ageRating ?: "T13",
+                        duration = "${movie?.duration ?: 0} phút"
+                    ) }
+                }
+
+                // Load cinema/room info from showtimes
+                val normalizedDate = dateArg.replace("-", "/")
+                val dateParts = normalizedDate.split("/")
+                val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+                val apiDate = if (dateParts.size == 2) "$currentYear-${dateParts[1]}-${dateParts[0]}" else ""
+                
+                if (apiDate.isNotEmpty()) {
+                    val stResponse = RetrofitClient.apiService.getShowtimesByMovie(mId, apiDate)
+                    if (stResponse.isSuccessful) {
+                        stResponse.body()?.data?.cinemas?.forEach { cinema ->
+                            val match = cinema.showtimes.find { it.id == stId }
+                            if (match != null) {
+                                _uiState.update { it.copy(
+                                    cinemaName = cinema.cinemaName,
+                                    room = match.roomName
+                                ) }
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     /**

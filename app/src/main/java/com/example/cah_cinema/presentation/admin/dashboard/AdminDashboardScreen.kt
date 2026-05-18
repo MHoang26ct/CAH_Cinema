@@ -41,72 +41,68 @@ fun AdminDashboardContent(state: AdminDashboardState) {
                 CircularProgressIndicator(color = Color(0xFF00BCD4))
             }
         } else {
-            Column(
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 220.dp),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(horizontal = 24.dp),
+                contentPadding = PaddingValues(vertical = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "Thống kê 30 ngày gần nhất",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "Thống kê 30 ngày gần nhất",
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
 
-                // Responsive grid: 2 cột trên phone, 4 cột trên tablet/landscape
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 220.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    // Không dùng fillMaxSize trong scroll — dùng wrapContentHeight
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 100.dp, max = 400.dp)
-                ) {
-                    item {
-                        AdminStatCard(
-                            title = "Tổng doanh thu",
-                            value = formatPrice(state.overview?.totalRevenue ?: 0.0),
-                            icon = Icons.Default.AttachMoney,
-                            color = Color(0xFF4CAF50)
-                        )
-                    }
-                    item {
-                        AdminStatCard(
-                            title = "Doanh thu vé",
-                            value = formatPrice(state.overview?.ticketRevenue ?: 0.0),
-                            icon = Icons.Default.ConfirmationNumber,
-                            color = Color(0xFF2196F3)
-                        )
-                    }
-                    item {
-                        AdminStatCard(
-                            title = "Doanh thu đồ ăn",
-                            value = formatPrice(state.overview?.foodRevenue ?: 0.0),
-                            icon = Icons.Default.Restaurant,
-                            color = Color(0xFFFF9800)
-                        )
-                    }
-                    item {
-                        AdminStatCard(
-                            title = "Vé đã bán",
-                            value = "${state.overview?.ticketsSold ?: 0} vé",
-                            icon = Icons.Default.Movie,
-                            color = Color(0xFF9C27B0)
-                        )
-                    }
+                item {
+                    AdminStatCard(
+                        title = "Tổng doanh thu",
+                        value = formatPrice(state.overview?.totalRevenue ?: 0.0),
+                        icon = Icons.Default.AttachMoney,
+                        color = Color(0xFF4CAF50)
+                    )
+                }
+                item {
+                    AdminStatCard(
+                        title = "Doanh thu vé",
+                        value = formatPrice(state.overview?.ticketRevenue ?: 0.0),
+                        icon = Icons.Default.ConfirmationNumber,
+                        color = Color(0xFF2196F3)
+                    )
+                }
+                item {
+                    AdminStatCard(
+                        title = "Doanh thu đồ ăn",
+                        value = formatPrice(state.overview?.foodRevenue ?: 0.0),
+                        icon = Icons.Default.Restaurant,
+                        color = Color(0xFFFF9800)
+                    )
+                }
+                item {
+                    AdminStatCard(
+                        title = "Vé đã bán",
+                        value = "${state.overview?.totalTicketsSold ?: 0} vé",
+                        icon = Icons.Default.Movie,
+                        color = Color(0xFF9C27B0)
+                    )
                 }
 
                 // Thông báo nếu chưa có dữ liệu
                 if (state.overview == null && !state.isLoading) {
-                    Text(
-                        text = state.errorMessage ?: "Không có dữ liệu thống kê",
-                        color = Color.White.copy(alpha = 0.5f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = state.errorMessage ?: "Không có dữ liệu thống kê",
+                            color = Color.White.copy(alpha = 0.5f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
         }

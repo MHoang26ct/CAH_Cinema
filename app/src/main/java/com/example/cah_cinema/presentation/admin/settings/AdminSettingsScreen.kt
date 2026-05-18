@@ -31,9 +31,25 @@ fun AdminSettingsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var showAddHolidayDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
+    }
+
+    LaunchedEffect(state.successMessage) {
+        state.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
+    }
 
     AdminSettingsContent(
         state = state,
+        snackbarHostState = snackbarHostState,
         onDeleteHoliday = { viewModel.deleteHoliday(it) },
         onAddHolidayClick = { showAddHolidayDialog = true }
     )
@@ -52,10 +68,14 @@ fun AdminSettingsScreen(
 @Composable
 fun AdminSettingsContent(
     state: AdminSettingsState,
+    snackbarHostState: SnackbarHostState,
     onDeleteHoliday: (Long) -> Unit,
     onAddHolidayClick: () -> Unit = {}
 ) {
-    AdminScaffold(title = "Cài đặt hệ thống") { paddingValues ->
+    AdminScaffold(
+        title = "Cài đặt hệ thống",
+        snackbarHostState = snackbarHostState
+    ) { paddingValues ->
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = CyanBlue)
@@ -237,10 +257,10 @@ fun PriceConfigTable(configs: List<PriceConfig>) {
                 modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(config.dayType, color = Color.White, modifier = Modifier.width(120.dp), style = MaterialTheme.typography.bodyMedium)
-                Text(config.timeSlot, color = Color.White, modifier = Modifier.width(120.dp), style = MaterialTheme.typography.bodyMedium)
-                Text(config.movieFormat, color = Color.White, modifier = Modifier.width(100.dp), style = MaterialTheme.typography.bodyMedium)
-                Text("x${config.multiplier}", color = CyanBlue, modifier = Modifier.width(80.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                Text(config.dayType ?: "", color = Color.White, modifier = Modifier.width(120.dp), style = MaterialTheme.typography.bodyMedium)
+                Text(config.timeSlot ?: "", color = Color.White, modifier = Modifier.width(120.dp), style = MaterialTheme.typography.bodyMedium)
+                Text(config.movieFormat ?: "", color = Color.White, modifier = Modifier.width(100.dp), style = MaterialTheme.typography.bodyMedium)
+                Text("x${config.multiplier ?: 1.0}", color = CyanBlue, modifier = Modifier.width(80.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 IconButton(onClick = { }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                 }
@@ -272,8 +292,8 @@ fun HolidayList(holidays: List<Holiday>, onDelete: (Long) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(holiday.name, color = Color.White, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                        Text(holiday.date, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+                        Text(holiday.name ?: "Không tên", color = Color.White, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Text(holiday.date ?: "", color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
                     }
                     if (holiday.isRecurring) {
                         Surface(

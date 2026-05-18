@@ -1,7 +1,6 @@
 package com.example.cah_cinema.presentation.user.profile
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,9 +38,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +78,19 @@ fun ProfileScreen(
     onLogout: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Tải lại dữ liệu mỗi khi màn hình hiển thị
+    LaunchedEffect(Unit) {
+        viewModel.loadProfileData()
+    }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearErrorMessage()
+        }
+    }
 
     // Dialog xác nhận xóa tài khoản
     if (state.showDeleteConfirm) {
@@ -104,24 +121,31 @@ fun ProfileScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        ProfileContent(
-            state = state,
-            onEvent = { event ->
-                when (event) {
-                    ProfileEvent.ChangePassword -> onNavigateToChangePassword()
-                    ProfileEvent.EditProfile -> onNavigateToEditProfile()
-                    ProfileEvent.ViewAllTickets -> onNavigateToAllTickets()
-                    ProfileEvent.ViewTicketDetail -> onNavigateToTicketDetail()
-                    ProfileEvent.Logout -> onLogout()
-                    else -> viewModel.onEvent(event)
-                }
-            },
-            onAdminClick = onNavigateToAdmin
-        )
+    Scaffold(
+        containerColor = Color(0xFF13131A),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
+            ProfileContent(
+                state = state,
+                onEvent = { event ->
+                    when (event) {
+                        ProfileEvent.ChangePassword -> onNavigateToChangePassword()
+                        ProfileEvent.EditProfile -> onNavigateToEditProfile()
+                        ProfileEvent.ViewAllTickets -> onNavigateToAllTickets()
+                        ProfileEvent.ViewTicketDetail -> onNavigateToTicketDetail()
+                        ProfileEvent.Logout -> onLogout()
+                        else -> viewModel.onEvent(event)
+                    }
+                },
+                onAdminClick = onNavigateToAdmin
+            )
 
-        if (state.isLoading) {
-            FullScreenLoading()
+            if (state.isLoading) {
+                FullScreenLoading()
+            }
         }
     }
 }

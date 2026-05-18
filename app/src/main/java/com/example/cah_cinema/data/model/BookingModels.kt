@@ -6,9 +6,19 @@ data class SeatItem(
     @SerializedName("seatId") val id: Long,
     @SerializedName("row") val row: Double,
     @SerializedName("col") val col: Double,
-    @SerializedName("seatType") val type: String,
+    @SerializedName("rowLabel") val rowLabel: String?,   // null = aisle ngang
+    @SerializedName("colLabel") val colLabel: String?,   // null = aisle dọc
+    @SerializedName("seatType") val seatType: SeatTypeItem,
     @SerializedName("status") val status: String,
-    @SerializedName("price") val price: Double
+    @SerializedName("isLocked") val isLocked: Boolean = false,
+    @SerializedName("isSold") val isSold: Boolean = false,
+    @SerializedName("occupancyStatus") val occupancyStatus: String = "AVAILABLE" // AVAILABLE, LOCKED, SOLD
+)
+
+data class SeatTypeItem(
+    @SerializedName("seatTypeId") val seatTypeId: Long,
+    @SerializedName("typeName") val typeName: String,    // REGULAR, VIP, COUPLE, AISLE
+    @SerializedName("priceMultiplier") val priceMultiplier: Double = 1.0
 )
 
 data class CreateBookingRequest(
@@ -26,8 +36,12 @@ data class FoodOrderItemRequest(
 
 data class BookingData(
     @SerializedName("bookingId") val id: Long,
-    @SerializedName("totalPrice") val totalPrice: Double,
-    @SerializedName("status") val status: String
+    @SerializedName("totalAmount") val totalAmount: Double,
+    @SerializedName("status") val status: String,
+    @SerializedName("expiresAt") val expiresAt: String? = null,
+    @SerializedName("seatSubtotal") val seatSubtotal: Double? = null,
+    @SerializedName("foodSubtotal") val foodSubtotal: Double? = null,
+    @SerializedName("discountAmount") val discountAmount: Double? = null
 )
 
 data class FoodItem(

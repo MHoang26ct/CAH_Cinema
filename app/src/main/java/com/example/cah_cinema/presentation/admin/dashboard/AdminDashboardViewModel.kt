@@ -31,16 +31,19 @@ class AdminDashboardViewModel(
 
     fun loadOverview() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val today = sdf.format(Date())
+        val calendar = Calendar.getInstance()
+        val toDate = sdf.format(calendar.time)
+        calendar.add(Calendar.DAY_OF_YEAR, -30)
+        val fromDate = sdf.format(calendar.time)
         
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val response = repository.getBusinessOverview(today, today)
-                if (response?.code == 200) {
-                    _state.update { it.copy(overview = response.data, isLoading = false) }
+                val resp = repository.getBusinessOverview(fromDate, toDate)
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(overview = resp.data, isLoading = false) }
                 } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi tải báo cáo") }
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi tải báo cáo") }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, errorMessage = e.message) }

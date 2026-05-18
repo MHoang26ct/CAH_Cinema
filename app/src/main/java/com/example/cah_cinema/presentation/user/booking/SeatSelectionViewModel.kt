@@ -79,19 +79,23 @@ class SeatSelectionViewModel(
     }
 
     private fun SeatItem.toDomainSeat(): Seat {
+        val seatTypeName = this.seatType.typeName
         return Seat(
             id = this.id.toString(),
-            row = ('A' + (this.row.toInt() - 1)).toString(),
-            number = this.col.toInt().toString().padStart(2, '0'),
-            type = when(this.type) {
+            row = this.row,
+            col = this.col,
+            rowLabel = this.rowLabel,
+            colLabel = this.colLabel,
+            type = when (seatTypeName) {
                 "COUPLE" -> SeatType.COUPLE
                 "VIP" -> SeatType.VIP
+                "AISLE" -> SeatType.AISLE
                 else -> SeatType.REGULAR
             },
-            status = when(this.status) {
-                "AVAILABLE" -> SeatStatus.AVAILABLE
-                "LOCKED", "BOOKED" -> SeatStatus.TAKEN_BY_OTHERS
-                else -> SeatStatus.MAINTENANCE
+            status = when (this.occupancyStatus) {
+                "SOLD" -> SeatStatus.BOOKED
+                "LOCKED" -> SeatStatus.TAKEN_BY_OTHERS
+                else -> SeatStatus.AVAILABLE
             }
         )
     }
@@ -116,7 +120,7 @@ class SeatSelectionViewModel(
             val isSelected = currentState.selectedSeats.any { it.id == seat.id }
 
             if (!isSelected) {
-                val totalTicketsAllowed = currentState.regularTicketsCount + currentState.coupleTicketsCount
+                val totalTicketsAllowed = currentState.regularTicketsCount + (currentState.coupleTicketsCount * 2)
                 if (currentState.selectedSeats.size >= totalTicketsAllowed) return@update currentState
 
                 val newSelectedSeats = currentState.selectedSeats + seat
@@ -177,6 +181,7 @@ class SeatSelectionViewModel(
     }
 
     fun getTotalAmount(): Double {
-        return _state.value.basePrice
+        return (_state.value.regularTicketsCount * _state.value.basePrice) + 
+               (_state.value.coupleTicketsCount * _state.value.basePrice * 2)
     }
 }

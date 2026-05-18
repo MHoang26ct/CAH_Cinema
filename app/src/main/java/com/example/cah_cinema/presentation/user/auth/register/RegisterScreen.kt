@@ -49,7 +49,7 @@ fun RegisterScreen(
                 text = stringResource(id = R.string.register_title),
                 style = MaterialTheme.typography.displayLarge.copy(
                     color = CyanBlue,
-                    fontSize = 55.sp,
+                    fontSize = 25.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 64.sp,
                     textAlign = TextAlign.Center

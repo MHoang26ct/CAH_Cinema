@@ -28,6 +28,7 @@ android {
         // Cloudinary config từ local.properties
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${localProperties["CLOUDINARY_CLOUD_NAME"] ?: "dqtnz9dhw"}\"")
         buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${localProperties["CLOUDINARY_UPLOAD_PRESET"] ?: "cinema"}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProperties["GOOGLE_WEB_CLIENT_ID"] ?: "YOUR_CLIENT_ID_HERE"}\"")
     }
 
     buildTypes {
@@ -68,6 +69,11 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.coil.compose)
     implementation(libs.zxing.core)
+    
+    // Google Sign-In & Credentials
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     
     // Networking
     implementation(libs.retrofit)

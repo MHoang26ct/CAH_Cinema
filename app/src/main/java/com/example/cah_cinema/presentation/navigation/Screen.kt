@@ -54,6 +54,7 @@ sealed class Screen(val route: String) {
     object AdminCinemaManagement : Screen("admin_cinemas")
     object AdminVoucherManagement : Screen("admin_vouchers")
     object AdminShowtimeManagement : Screen("admin_showtimes")
+    object AdminFoodManagement : Screen("admin_food")
     object AdminReport : Screen("admin_reports")
     object AdminSeatManagement : Screen("admin_seats/{roomId}") {
         fun createRoute(roomId: Long) = "admin_seats/$roomId"

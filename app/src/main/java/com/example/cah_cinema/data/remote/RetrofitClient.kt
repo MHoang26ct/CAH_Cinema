@@ -1,5 +1,7 @@
 package com.example.cah_cinema.data.remote
 
+import android.content.Context
+import com.example.cah_cinema.util.PreferenceManager
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -10,12 +12,25 @@ object RetrofitClient {
     private const val BASE_URL = "http://100.89.144.114:8080/"
 
     private var token: String? = null
+    private var preferenceManager: PreferenceManager? = null
+
+    fun init(context: Context) {
+        preferenceManager = PreferenceManager.getInstance(context)
+        token = preferenceManager?.getToken()
+    }
 
     fun setToken(newToken: String?) {
         token = newToken
+        preferenceManager?.saveToken(newToken)
     }
 
     fun getToken(): String? = token
+
+    fun saveAvatarUrl(url: String?) {
+        preferenceManager?.saveAvatarUrl(url)
+    }
+
+    fun getLocalAvatarUrl(): String? = preferenceManager?.getAvatarUrl()
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -26,7 +41,8 @@ object RetrofitClient {
         .addInterceptor { chain ->
             val requestBuilder = chain.request().newBuilder()
             token?.let {
-                requestBuilder.addHeader("Authorization", it)
+                val bearerToken = if (it.startsWith("Bearer ")) it else "Bearer $it"
+                requestBuilder.addHeader("Authorization", bearerToken)
             }
             chain.proceed(requestBuilder.build())
         }

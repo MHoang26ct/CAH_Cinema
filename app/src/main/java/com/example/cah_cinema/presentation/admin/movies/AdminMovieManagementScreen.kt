@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cah_cinema.data.model.Genre
+import com.example.cah_cinema.data.model.MovieDetail
 import com.example.cah_cinema.data.model.MovieListItem
 import com.example.cah_cinema.data.model.UpdateOrCreateMovieRequest
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
@@ -121,13 +122,17 @@ fun AdminMovieManagementScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
                         .background(Color(0xFF1C1C22).copy(alpha = 0.5f))
                 ) {
                     items(state.movies) { movie ->
                         MovieRow(
                             movie = movie,
-                            onEdit = { editingMovie = movie },
+                            onEdit = { 
+                                viewModel.loadMovieDetail(movie.id)
+                                editingMovie = movie 
+                            },
                             onDelete = { viewModel.deleteMovie(movie.id) }
                         )
                         HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
@@ -159,23 +164,43 @@ fun AdminMovieManagementScreen(
 
     // Dialog sửa phim
     editingMovie?.let { movie ->
-        MovieFormDialog(
-            title = "Sửa phim",
-            genres = state.genres,
-            isUploading = state.isUploading,
-            isUploadingVideo = state.isUploadingVideo,
-            initialData = movie,
-            onDismiss = { editingMovie = null },
-            onUploadImage = { context, uri, callback ->
-                viewModel.uploadPosterImage(context, uri, callback)
-            },
-            onUploadVideo = { context, uri, callback ->
-                viewModel.uploadTrailerVideo(context, uri, callback)
-            },
-            onConfirm = { request ->
-                viewModel.updateMovie(movie.id, request) { editingMovie = null }
-            }
-        )
+        if (state.isLoadingDetail) {
+            AlertDialog(
+                onDismissRequest = { editingMovie = null },
+                confirmButton = {},
+                text = {
+                    Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = CyanBlue)
+                    }
+                },
+                containerColor = Color(0xFF21212B)
+            )
+        } else {
+            MovieFormDialog(
+                title = "Sửa phim",
+                genres = state.genres,
+                isUploading = state.isUploading,
+                isUploadingVideo = state.isUploadingVideo,
+                initialData = movie,
+                initialDetail = state.editingMovieDetail,
+                onDismiss = { 
+                    editingMovie = null
+                    viewModel.clearEditingDetail()
+                },
+                onUploadImage = { context, uri, callback ->
+                    viewModel.uploadPosterImage(context, uri, callback)
+                },
+                onUploadVideo = { context, uri, callback ->
+                    viewModel.uploadTrailerVideo(context, uri, callback)
+                },
+                onConfirm = { request ->
+                    viewModel.updateMovie(movie.id, request) { 
+                        editingMovie = null
+                        viewModel.clearEditingDetail()
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -187,6 +212,7 @@ fun MovieFormDialog(
     isUploading: Boolean,
     isUploadingVideo: Boolean = false,
     initialData: MovieListItem? = null,
+    initialDetail: MovieDetail? = null,
     onDismiss: () -> Unit,
     onUploadImage: (android.content.Context, Uri, (String?) -> Unit) -> Unit,
     onUploadVideo: (android.content.Context, Uri, (String?) -> Unit) -> Unit = { _, _, _ -> },
@@ -194,18 +220,28 @@ fun MovieFormDialog(
 ) {
     val context = LocalContext.current
 
-    var movieTitle by remember { mutableStateOf(initialData?.title ?: "") }
-    var description by remember { mutableStateOf("") }
-    var duration by remember { mutableStateOf(initialData?.duration?.toString() ?: "") }
-    var day by remember { mutableStateOf("01") }
-    var month by remember { mutableStateOf("01") }
-    var year by remember { mutableStateOf("2026") }
-    var ageRating by remember { mutableStateOf(initialData?.ageRating ?: "T13") }
-    var posterUrl by remember { mutableStateOf(initialData?.posterUrl ?: "") }
-    var trailerUrl by remember { mutableStateOf("") }
-    var directorName by remember { mutableStateOf("") }
-    var actorList by remember { mutableStateOf("") }
-    val selectedGenreIds = remember { mutableStateListOf<Long>() }
+    var movieTitle by remember { mutableStateOf(initialDetail?.title ?: initialData?.title ?: "") }
+    var description by remember { mutableStateOf(initialDetail?.description ?: "") }
+    var duration by remember { mutableStateOf(initialDetail?.duration?.toString() ?: initialData?.duration?.toString() ?: "") }
+    
+    // Parse release date if available
+    val initialDate = initialDetail?.releaseDate ?: "2026-01-01"
+    val dateParts = initialDate.split("-")
+    var day by remember { mutableStateOf(if (dateParts.size == 3) dateParts[2] else "01") }
+    var month by remember { mutableStateOf(if (dateParts.size == 3) dateParts[1] else "01") }
+    var year by remember { mutableStateOf(if (dateParts.size == 3) dateParts[0] else "2026") }
+    
+    var ageRating by remember { mutableStateOf(initialDetail?.ageRating ?: initialData?.ageRating ?: "T13") }
+    var posterUrl by remember { mutableStateOf(initialDetail?.posterUrl ?: initialData?.posterUrl ?: "") }
+    var trailerUrl by remember { mutableStateOf(initialDetail?.trailerUrl ?: "") }
+    var directorName by remember { mutableStateOf(initialDetail?.directorName ?: "") }
+    var actorList by remember { mutableStateOf(initialDetail?.actorList ?: "") }
+    
+    val selectedGenreIds = remember { 
+        mutableStateListOf<Long>().apply {
+            initialDetail?.genres?.map { it.id }?.let { addAll(it) }
+        }
+    }
     var ageRatingExpanded by remember { mutableStateOf(false) }
     val ageRatings = listOf("P", "T13", "T16", "T18")
 
@@ -385,8 +421,17 @@ fun MovieFormDialog(
                 }
 
                 // Thể loại
-                Text("Thể loại", color = Color.White, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Thể loại", color = Color.White, fontSize = 14.sp)
+                    if (selectedGenreIds.isEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("(Chọn ít nhất 1 thể loại)", color = Color.Red.copy(alpha = 0.7f), fontSize = 11.sp)
+                    }
+                }
                 FlowRow(modifier = Modifier.fillMaxWidth()) {
+                    if (genres.isEmpty()) {
+                        Text("Đang tải thể loại...", color = Color.Gray, fontSize = 12.sp)
+                    }
                     genres.forEach { genre ->
                         FilterChip(
                             selected = selectedGenreIds.contains(genre.id),

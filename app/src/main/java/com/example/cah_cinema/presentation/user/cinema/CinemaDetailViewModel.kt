@@ -62,6 +62,7 @@ class CinemaDetailViewModel(
         val selectedDate = _state.value.availableDates.find { it.isSelected }?.date ?: ""
         
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+        // date có dạng "dd/MM" từ setupDates()
         val parts = selectedDate.split("/")
         val apiDate = if (parts.size == 2) "$currentYear-${parts[1]}-${parts[0]}" else ""
 

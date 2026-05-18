@@ -62,5 +62,8 @@ data class InvoiceFood(
 data class UpdateProfileRequest(
     @SerializedName("name") val name: String? = null,
     @SerializedName("email") val email: String? = null,
-    @SerializedName("phone") val phone: String? = null
+    @SerializedName("phone") val phone: String? = null,
+    // avatarUrl: backend clone cũ chưa nhận field này,
+    // nhưng giữ ở đây để tương thích khi backend mới được deploy
+    @SerializedName("avatarUrl") val avatarUrl: String? = null
 )

@@ -191,11 +191,16 @@ fun EditProfileScreen(
                             val request = UpdateProfileRequest(
                                 name = name.takeIf { it.isNotBlank() },
                                 email = email.takeIf { it.isNotBlank() },
-                                phone = phone.takeIf { it.isNotBlank() }
+                                phone = phone.takeIf { it.isNotBlank() },
+                                avatarUrl = avatarUrl.takeIf { it.isNotBlank() }
                             )
                             val response = RetrofitClient.apiService.updateMyProfile(request)
                             isSaving = false
                             if (response.isSuccessful) {
+                                // Lưu avatarUrl local để hiển thị ngay cả khi backend clone cũ chưa lưu
+                                if (avatarUrl.isNotBlank()) {
+                                    RetrofitClient.saveAvatarUrl(avatarUrl)
+                                }
                                 viewModel.loadProfileData()
                                 onSaveClick(name, email, phone)
                             } else {

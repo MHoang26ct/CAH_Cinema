@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 data class TicketInfo(
     val movieTitle: String,
@@ -76,7 +78,7 @@ class ProfileViewModel : ViewModel() {
                                 phone = user.phone ?: "",
                                 avatarUrl = user.avatarUrl ?: ImageUrls.MOCK_AVATAR,
                                 loyaltyPoints = user.totalPoint,
-                                rank = user.rankLevel,
+                                rank = translateRank(user.rankLevel),
                                 role = user.role,
                                 allInvoices = invoices,
                                 recentTicket = recentInvoice?.let { invoice ->
@@ -90,7 +92,7 @@ class ProfileViewModel : ViewModel() {
                                     TicketInfo(
                                         movieTitle = invoice.movieTitle,
                                         cinemaName = invoice.cinemaName,
-                                        showTime = invoice.startTime,
+                                        showTime = formatDateTime(invoice.startTime),
                                         seat = seatDisplay,
                                         posterUrl = invoice.moviePosterUrl,
                                         bookingId = invoice.bookingId,
@@ -148,7 +150,7 @@ class ProfileViewModel : ViewModel() {
                 recentTicket = TicketInfo(
                     movieTitle = invoice.movieTitle,
                     cinemaName = invoice.cinemaName,
-                    showTime = invoice.startTime,
+                    showTime = formatDateTime(invoice.startTime),
                     seat = seatDisplay,
                     posterUrl = invoice.moviePosterUrl,
                     bookingId = invoice.bookingId,
@@ -157,5 +159,29 @@ class ProfileViewModel : ViewModel() {
                 )
             )
         }
+    }
+
+    private fun formatDateTime(isoString: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault())
+            val date = inputFormat.parse(isoString)
+            if (date != null) outputFormat.format(date) else isoString
+        } catch (e: Exception) {
+            isoString
+        }
+    }
+
+    private fun translateRank(rank: String): String {
+        return when (rank.uppercase()) {
+            "SILVER" -> "Hạng Bạc"
+            "GOLD" -> "Hạng Vàng"
+            "DIAMOND" -> "Hạng Kim Cương"
+            else -> rank
+        }
+    }
+
+    fun clearErrorMessage() {
+        _state.update { it.copy(errorMessage = null) }
     }
 }

@@ -1,10 +1,11 @@
 package com.example.cah_cinema.presentation.user.auth.login
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -13,10 +14,21 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
+import com.example.cah_cinema.R
 import com.example.cah_cinema.ui.theme.CyanBlue
 import com.example.cah_cinema.ui.theme.TextGray
-
+import com.example.cah_cinema.BuildConfig
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -25,6 +37,9 @@ fun LoginScreen(
     onForgotPasswordClick: () -> Unit = {},
     onRegisterClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -118,6 +133,84 @@ fun LoginScreen(
                     fontSize = 16.sp
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = Color.Gray.copy(alpha = 0.3f)
+            )
+            Text(
+                text = " Hoặc ",
+                color = TextGray,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            HorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = Color.Gray.copy(alpha = 0.3f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        OutlinedButton(
+            onClick = { 
+                val credentialManager = CredentialManager.create(context)
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                    .setAutoSelectEnabled(false) // false = luôn hiện dialog chọn tài khoản
+                    .build()
+
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+
+                scope.launch {
+                    try {
+                        val result = credentialManager.getCredential(context = context, request = request)
+                        val credential = result.credential
+                        
+                        if (credential is CustomCredential && 
+                            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                            viewModel.loginWithGoogle(googleIdTokenCredential.idToken, onLoginSuccess)
+                        }
+                    } catch (e: GetCredentialCancellationException) {
+                        // User tự đóng dialog — không hiển thị lỗi
+                    } catch (e: NoCredentialException) {
+                        // Không có tài khoản Google nào trên thiết bị
+                        viewModel.errorMessage = "Không tìm thấy tài khoản Google trên thiết bị"
+                    } catch (e: Exception) {
+                        viewModel.errorMessage = "Đăng nhập Google thất bại: ${e.localizedMessage}"
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.5f)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_google_logo),
+                contentDescription = "Google Logo",
+                modifier = Modifier.size(22.dp),
+                tint = Color.Unspecified
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Tiếp tục với Google",
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

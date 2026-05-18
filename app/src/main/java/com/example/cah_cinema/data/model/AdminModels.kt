@@ -7,7 +7,8 @@ data class BusinessOverviewResponse(
     @SerializedName("totalRevenue") val totalRevenue: Double,
     @SerializedName("ticketRevenue") val ticketRevenue: Double,
     @SerializedName("foodRevenue") val foodRevenue: Double,
-    @SerializedName("ticketsSold") val ticketsSold: Int,
+    @SerializedName("totalTicketsSold") val totalTicketsSold: Int,
+    @SerializedName("totalBookingsPaid") val totalBookingsPaid: Int,
     @SerializedName("activeMovies") val activeMovies: Int
 )
 
@@ -49,7 +50,8 @@ data class UpdateOrCreateMovieRequest(
 data class CreateCinemaRequest(
     @SerializedName("name") val name: String,
     @SerializedName("address") val address: String,
-    @SerializedName("hotline") val hotline: String
+    @SerializedName("hotline") val hotline: String,
+    @SerializedName("imageUrl") val imageUrl: String? = null
 )
 
 data class CreateRoomRequest(
@@ -114,18 +116,18 @@ data class CreateSeatRequest(
 
 // Config & Holiday Models
 data class PriceConfig(
-    @SerializedName("configId") val id: Long,
-    @SerializedName("multiplier") val multiplier: Double,
-    @SerializedName("dayType") val dayType: String, // WEEKDAY, WEEKEND, HOLIDAY
-    @SerializedName("timeSlot") val timeSlot: String, // MORNING, AFTERNOON, EVENING
-    @SerializedName("movieFormat") val movieFormat: String // 2D, 3D, IMAX
+    @SerializedName("configId") val id: Long? = null,
+    @SerializedName("multiplier") val multiplier: Double? = null,
+    @SerializedName("dayType") val dayType: String? = null, // WEEKDAY, WEEKEND, HOLIDAY
+    @SerializedName("timeSlot") val timeSlot: String? = null, // MORNING, AFTERNOON, EVENING
+    @SerializedName("movieFormat") val movieFormat: String? = null // 2D, 3D, IMAX
 )
 
 data class Holiday(
     @SerializedName("holidayId") val id: Long? = null,
-    @SerializedName("date") val date: String,
-    @SerializedName("name") val name: String,
-    @SerializedName("isRecurring") val isRecurring: Boolean
+    @SerializedName("date") val date: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("isRecurring") val isRecurring: Boolean = false
 )
 
 data class DeleteHolidayRequest(

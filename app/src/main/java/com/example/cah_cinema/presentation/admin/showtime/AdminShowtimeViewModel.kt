@@ -14,21 +14,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class AdminShowtimeState(
-    val showtimesByMovie: List<CinemaShowtimeItem> = listOf(
-        CinemaShowtimeItem(
-            movie = MovieInfo(1, "HẸN EM NGÀY NHẬT THỰC", "", "T16"),
-            showtimes = listOf(
-                ShowtimeInfo(1001, "2026-05-16T18:20:00", "2026-05-16T20:18:00", "2D", 45000.0, "AVAILABLE", "Phòng 01"),
-                ShowtimeInfo(1002, "2026-05-16T20:30:00", "2026-05-16T22:28:00", "2D", 45000.0, "AVAILABLE", "Phòng 01")
-            )
-        ),
-        CinemaShowtimeItem(
-            movie = MovieInfo(2, "KUNG FU PANDA 4", "", "P"),
-            showtimes = listOf(
-                ShowtimeInfo(2001, "2026-05-16T10:00:00", "2026-05-16T11:34:00", "3D", 65000.0, "AVAILABLE", "Phòng 02")
-            )
-        )
-    ),
+    val showtimesByMovie: List<CinemaShowtimeItem> = emptyList(),
     val movies: List<MovieListItem> = emptyList(),
     val cinemas: List<CinemaItem> = emptyList(),
     val rooms: List<RoomItem> = emptyList(),
@@ -43,25 +29,39 @@ class AdminShowtimeViewModel(
     val state: StateFlow<AdminShowtimeState> = _state.asStateFlow()
 
     init {
-        loadShowtimes()
-        loadMovies()
-        loadCinemas()
+        loadInitialData()
+    }
+
+    private fun loadInitialData() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            val moviesJob = launch { loadMovies() }
+            val cinemasJob = launch { loadCinemas() }
+            moviesJob.join()
+            cinemasJob.join()
+            loadShowtimes()
+        }
     }
 
     fun loadShowtimes() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val today = sdf.format(Date())
+        val cinemas = _state.value.cinemas
         
+        if (cinemas.isEmpty()) {
+            _state.update { it.copy(isLoading = false) }
+            return
+        }
+        
+        val cinemaId = cinemas.first().id
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                // For admin, maybe show all showtimes for a selected cinema
-                val cinemaId = _state.value.cinemas.firstOrNull()?.id ?: 7L // Default to Landmark 81 if empty
-                val response = repository.getShowtimesByCinema(cinemaId, today) 
-                if (response?.code == 200) {
-                    _state.update { it.copy(showtimesByMovie = response.data ?: emptyList(), isLoading = false) }
+                val resp = repository.getShowtimesByCinema(cinemaId, today)
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(showtimesByMovie = resp.data ?: emptyList(), isLoading = false) }
                 } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi tải lịch chiếu") }
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi tải lịch chiếu") }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, errorMessage = e.message) }
@@ -69,49 +69,67 @@ class AdminShowtimeViewModel(
         }
     }
 
-    private fun loadMovies() {
-        viewModelScope.launch {
-            try {
-                val response = repository.getMovies()
-                if (response?.code == 200) {
-                    _state.update { it.copy(movies = response.data?.content ?: emptyList()) }
-                }
-            } catch (e: Exception) {}
-        }
+    private suspend fun loadMovies() {
+        try {
+            val resp = repository.getMovies()
+            if (resp != null && resp.code in 200..299) {
+                _state.update { it.copy(movies = resp.data?.content ?: emptyList()) }
+            }
+        } catch (e: Exception) {}
     }
 
-    private fun loadCinemas() {
-        viewModelScope.launch {
-            try {
-                val response = repository.getCinemas()
-                if (response?.code == 200) {
-                    _state.update { it.copy(cinemas = response.data ?: emptyList()) }
-                }
-            } catch (e: Exception) {}
-        }
+    private suspend fun loadCinemas() {
+        try {
+            val resp = repository.getCinemas()
+            if (resp != null && resp.code in 200..299) {
+                _state.update { it.copy(cinemas = resp.data ?: emptyList()) }
+            }
+        } catch (e: Exception) {}
     }
 
     fun loadRooms(cinemaId: Long) {
         viewModelScope.launch {
             try {
-                val response = repository.getRoomsByCinema(cinemaId)
-                if (response?.code == 200) {
-                    _state.update { it.copy(rooms = response.data ?: emptyList()) }
+                val resp = repository.getRoomsByCinema(cinemaId)
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(rooms = resp.data ?: emptyList()) }
                 }
             } catch (e: Exception) {}
         }
     }
 
     fun createShowtime(request: CreateShowtimeRequest, onSuccess: () -> Unit) {
-        _state.update { it.copy(isLoading = true) }
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        android.util.Log.d("AdminShowtime", "Creating showtime: $request")
         viewModelScope.launch {
             try {
-                val response = repository.createShowtime(request)
-                if (response?.code == 200) {
+                val resp = repository.createShowtime(request)
+                android.util.Log.d("AdminShowtime", "Response: $resp")
+                if (resp != null && resp.code in 200..299) {
                     loadShowtimes()
                     onSuccess()
                 } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi tạo lịch chiếu") }
+                    val msg = resp?.message ?: "Lỗi tạo lịch chiếu"
+                    android.util.Log.e("AdminShowtime", "Error: $msg")
+                    _state.update { it.copy(isLoading = false, errorMessage = msg) }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AdminShowtime", "Exception: ${e.message}", e)
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun updateShowtime(request: UpdateShowtimeRequest, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val resp = repository.updateShowtime(request)
+                if (resp != null && resp.code in 200..299) {
+                    loadShowtimes()
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi cập nhật lịch chiếu") }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, errorMessage = e.message) }
@@ -122,11 +140,15 @@ class AdminShowtimeViewModel(
     fun deleteShowtime(id: Long) {
         viewModelScope.launch {
             try {
-                val response = repository.deleteShowtime(id)
-                if (response?.code == 200) {
+                val resp = repository.deleteShowtime(id)
+                if (resp != null && resp.code in 200..299) {
                     loadShowtimes()
                 }
             } catch (e: Exception) { }
         }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(errorMessage = null) }
     }
 }

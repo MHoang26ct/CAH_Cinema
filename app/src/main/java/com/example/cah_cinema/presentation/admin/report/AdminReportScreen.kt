@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
@@ -105,47 +107,47 @@ fun AdminReportScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OverviewCards(overview: BusinessOverviewResponse) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OverviewCard(
-                title = "Tổng doanh thu",
-                value = formatPrice(overview.totalRevenue),
-                icon = Icons.Default.AttachMoney,
-                color = CyanBlue,
-                modifier = Modifier.weight(1f)
-            )
-            OverviewCard(
-                title = "Doanh thu vé",
-                value = formatPrice(overview.ticketRevenue),
-                icon = Icons.Default.ConfirmationNumber,
-                color = Color(0xFF4CAF50),
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OverviewCard(
-                title = "Doanh thu đồ ăn",
-                value = formatPrice(overview.foodRevenue),
-                icon = Icons.Default.Restaurant,
-                color = Color(0xFFFF9800),
-                modifier = Modifier.weight(1f)
-            )
-            OverviewCard(
-                title = "Số vé bán",
-                value = "${overview.ticketsSold} vé",
-                icon = Icons.Default.Movie,
-                color = Color(0xFF9C27B0),
-                modifier = Modifier.weight(1f)
-            )
-        }
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        maxItemsInEachRow = 4
+    ) {
+        val cardModifier = Modifier
+            .weight(1f)
+            .widthIn(min = 200.dp)
+
+        OverviewCard(
+            title = "Tổng doanh thu",
+            value = formatPrice(overview.totalRevenue),
+            icon = Icons.Default.AttachMoney,
+            color = CyanBlue,
+            modifier = cardModifier
+        )
+        OverviewCard(
+            title = "Doanh thu vé",
+            value = formatPrice(overview.ticketRevenue),
+            icon = Icons.Default.ConfirmationNumber,
+            color = Color(0xFF4CAF50),
+            modifier = cardModifier
+        )
+        OverviewCard(
+            title = "Doanh thu đồ ăn",
+            value = formatPrice(overview.foodRevenue),
+            icon = Icons.Default.Restaurant,
+            color = Color(0xFFFF9800),
+            modifier = cardModifier
+        )
+        OverviewCard(
+            title = "Số vé bán",
+            value = "${overview.totalTicketsSold} vé",
+            icon = Icons.Default.Movie,
+            color = Color(0xFF9C27B0),
+            modifier = cardModifier
+        )
     }
 }
 
@@ -166,14 +168,14 @@ fun OverviewCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(title, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                Text(title, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.labelLarge)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = value,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                style = MaterialTheme.typography.titleLarge  // nhất quán với AdminStatCard
             )
         }
     }

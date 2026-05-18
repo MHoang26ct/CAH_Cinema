@@ -22,9 +22,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cah_cinema.ui.theme.CyanBlue
+
+// Hằng số responsive cho tablet
+private val TABLET_CONTENT_MAX_WIDTH = 1200.dp
+private val SIDEBAR_EXPANDED_WIDTH = 260.dp
+private val SIDEBAR_COLLAPSED_WIDTH = 72.dp  // tăng từ 60 → 72 cho touch target tốt hơn
 /**
  * Simplified AdminScaffold - No longer contains the sidebar itself.
  * The Sidebar is now managed globally in MainActivity for persistence.
+ * Optimized for tablet (landscape) layout.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +50,8 @@ fun AdminScaffold(
                     Text(
                         text = title.uppercase(),
                         color = Color.White,
-                        style = MaterialTheme.typography.headlineSmall,
+                        // titleLarge phù hợp hơn headlineSmall trên tablet — không quá to
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.5.sp
                     )
@@ -68,7 +75,7 @@ fun AdminSidebar(
     onToggle: () -> Unit = {}
 ) {
     val sidebarWidth by animateDpAsState(
-        targetValue = if (isExpanded) 260.dp else 60.dp,
+        targetValue = if (isExpanded) SIDEBAR_EXPANDED_WIDTH else SIDEBAR_COLLAPSED_WIDTH,
         animationSpec = androidx.compose.animation.core.tween(300),
         label = "sidebarWidth"
     )
@@ -77,7 +84,7 @@ fun AdminSidebar(
         modifier = modifier
             .width(sidebarWidth)
             .background(Color(0xFF1C1C22))
-            .padding(vertical = 24.dp, horizontal = if (isExpanded) 16.dp else 8.dp)
+            .padding(vertical = 24.dp, horizontal = if (isExpanded) 16.dp else 10.dp)
     ) {
         // Toggle button row
         Row(
@@ -90,12 +97,12 @@ fun AdminSidebar(
             if (isExpanded) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(36.dp),
                         color = CyanBlue,
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Movie, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Movie, contentDescription = null, tint = Color.Black, modifier = Modifier.size(20.dp))
                         }
                     }
                     Spacer(modifier = Modifier.width(10.dp))
@@ -108,12 +115,13 @@ fun AdminSidebar(
                     )
                 }
             }
-            IconButton(onClick = onToggle, modifier = Modifier.size(36.dp)) {
+            // Touch target tối thiểu 48dp cho tablet
+            IconButton(onClick = onToggle, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ChevronLeft else Icons.Default.Menu,
                     contentDescription = if (isExpanded) "Đóng menu" else "Mở menu",
                     tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -123,6 +131,7 @@ fun AdminSidebar(
             SidebarItem("Quản lý Phim", "admin_movies", Icons.Default.Movie),
             SidebarItem("Quản lý Rạp", "admin_cinemas", Icons.Default.Business),
             SidebarItem("Lịch chiếu", "admin_showtimes", Icons.Default.AccessTime),
+            SidebarItem("Đồ ăn & Nước", "admin_food", Icons.Default.Restaurant),
             SidebarItem("Voucher", "admin_vouchers", Icons.Default.ConfirmationNumber),
             SidebarItem("Báo cáo", "admin_reports", Icons.Default.BarChart),
             SidebarItem("Cài đặt hệ thống", "admin_settings", Icons.Default.Settings)
@@ -173,7 +182,7 @@ fun SidebarMenuItem(
     ) {
         Row(
             modifier = Modifier.padding(
-                vertical = 12.dp,
+                vertical = 14.dp,  // tăng từ 12 → 14 cho touch target tốt hơn trên tablet
                 horizontal = if (isExpanded) horizontalPadding else 0.dp
             ),
             verticalAlignment = Alignment.CenterVertically,
@@ -183,7 +192,7 @@ fun SidebarMenuItem(
                 imageVector = item.icon,
                 contentDescription = item.title,
                 tint = if (isSelected) activeColor else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)  // tăng từ 22 → 24 cho dễ nhìn trên tablet
             )
             if (isExpanded) {
                 Spacer(modifier = Modifier.width(16.dp))
@@ -221,22 +230,23 @@ fun AdminStatCard(
         border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {
         Row(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(20.dp),  // giảm từ 24 → 20 để card không quá rộng
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(52.dp),
+                modifier = Modifier.size(48.dp),  // giảm từ 52 → 48
                 color = color.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(28.dp))
+                    Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(26.dp))
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(title, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.labelLarge)
-                Text(value, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                // headlineMedium quá to trên tablet khi 4 card nằm ngang → dùng headlineSmall
+                Text(value, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
             }
         }
     }

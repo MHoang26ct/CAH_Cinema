@@ -8,6 +8,7 @@ import com.example.cah_cinema.data.model.Genre
 import com.example.cah_cinema.data.model.MovieDetail
 import com.example.cah_cinema.data.model.MovieListItem
 import com.example.cah_cinema.data.model.UpdateOrCreateMovieRequest
+import com.example.cah_cinema.data.model.BaseResponse
 import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.domain.repository.AdminRepository
 import com.example.cah_cinema.data.repository.AdminRepositoryImpl
@@ -21,7 +22,9 @@ import kotlinx.coroutines.launch
 data class AdminMovieState(
     val movies: List<MovieListItem> = emptyList(),
     val genres: List<Genre> = emptyList(),
+    val editingMovieDetail: MovieDetail? = null,
     val isLoading: Boolean = false,
+    val isLoadingDetail: Boolean = false,
     val isUploading: Boolean = false,
     val isUploadingVideo: Boolean = false,
     val errorMessage: String? = null,
@@ -43,16 +46,36 @@ class AdminMovieViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val response = adminRepository.getMovies()
-                if (response?.code == 200) {
-                    _state.update { it.copy(movies = response.data?.content ?: emptyList(), isLoading = false) }
+                val resp = adminRepository.getMovies()
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(movies = resp.data?.content ?: emptyList(), isLoading = false) }
                 } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi tải phim") }
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi tải phim") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _state.update { it.copy(isLoading = false, errorMessage = "Lỗi kết nối: ${e.message}") }
             }
         }
+    }
+
+    fun loadMovieDetail(id: Long) {
+        _state.update { it.copy(isLoadingDetail = true, editingMovieDetail = null) }
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getMovieDetail(id)
+                if (response.isSuccessful) {
+                    _state.update { it.copy(editingMovieDetail = response.body()?.data, isLoadingDetail = false) }
+                } else {
+                    _state.update { it.copy(isLoadingDetail = false, errorMessage = "Không thể lấy chi tiết phim") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoadingDetail = false, errorMessage = "Lỗi kết nối detail: ${e.message}") }
+            }
+        }
+    }
+
+    fun clearEditingDetail() {
+        _state.update { it.copy(editingMovieDetail = null) }
     }
 
     fun loadGenres() {
@@ -66,9 +89,6 @@ class AdminMovieViewModel(
         }
     }
 
-    /**
-     * Upload ảnh poster lên Cloudinary, trả về URL qua callback.
-     */
     fun uploadPosterImage(context: Context, imageUri: Uri, onResult: (String?) -> Unit) {
         _state.update { it.copy(isUploading = true) }
         viewModelScope.launch {
@@ -84,9 +104,6 @@ class AdminMovieViewModel(
         }
     }
 
-    /**
-     * Upload video trailer lên Cloudinary, trả về URL qua callback.
-     */
     fun uploadTrailerVideo(context: Context, videoUri: Uri, onResult: (String?) -> Unit) {
         _state.update { it.copy(isUploadingVideo = true) }
         viewModelScope.launch {
@@ -106,16 +123,16 @@ class AdminMovieViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val response = adminRepository.createMovie(request)
-                if (response?.code == 200) {
+                val resp = adminRepository.createMovie(request)
+                if (resp != null && resp.code in 200..299) {
                     _state.update { it.copy(successMessage = "Thêm phim thành công") }
-                    loadMovies()
                     onSuccess()
+                    loadMovies()
                 } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi thêm phim") }
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi thêm phim") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _state.update { it.copy(isLoading = false, errorMessage = "Lỗi kết nối: ${e.message}") }
             }
         }
     }
@@ -124,16 +141,16 @@ class AdminMovieViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val response = adminRepository.updateMovie(id, request)
-                if (response?.code == 200) {
+                val resp = adminRepository.updateMovie(id, request)
+                if (resp != null && resp.code in 200..299) {
                     _state.update { it.copy(successMessage = "Cập nhật phim thành công") }
-                    loadMovies()
                     onSuccess()
+                    loadMovies()
                 } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi cập nhật phim") }
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi cập nhật phim") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _state.update { it.copy(isLoading = false, errorMessage = "Lỗi kết nối: ${e.message}") }
             }
         }
     }
@@ -141,14 +158,14 @@ class AdminMovieViewModel(
     fun deleteMovie(id: Long) {
         viewModelScope.launch {
             try {
-                val response = adminRepository.deleteMovie(id)
-                if (response?.code == 200) {
+                val resp = adminRepository.deleteMovie(id)
+                if (resp != null && resp.code in 200..299) {
                     loadMovies()
                 } else {
-                    _state.update { it.copy(errorMessage = "Xóa phim thất bại") }
+                    _state.update { it.copy(errorMessage = resp?.message ?: "Xóa phim thất bại") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(errorMessage = e.message) }
+                _state.update { it.copy(errorMessage = "Lỗi kết nối: ${e.message}") }
             }
         }
     }
