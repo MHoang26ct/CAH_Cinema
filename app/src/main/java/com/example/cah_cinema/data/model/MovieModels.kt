@@ -12,6 +12,7 @@ data class MovieListItem(
     @SerializedName("movieId") val id: Long,
     @SerializedName("title") val title: String,
     @SerializedName("duration") val duration: Int,
+    @SerializedName("releaseDate") val releaseDate: String,
     @SerializedName("ageRating") val ageRating: String,
     @SerializedName("posterUrl") val posterUrl: String
 )
@@ -28,6 +29,11 @@ data class MovieDetail(
     @SerializedName("directorName") val directorName: String?,
     @SerializedName("actorList") val actorList: String?,
     @SerializedName("genres") val genres: List<Genre>
+)
+
+data class FeaturedMoviesData(
+    @SerializedName("nowShowing") val nowShowing: List<MovieListItem>,
+    @SerializedName("upcoming") val upcoming: List<MovieListItem>
 )
 
 data class Genre(

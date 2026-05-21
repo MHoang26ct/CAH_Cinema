@@ -11,6 +11,7 @@ interface AdminRepository {
 
     // Movies
     suspend fun createMovie(request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>?
+    suspend fun updateMovie(id: Long, request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>?
     suspend fun deleteMovie(id: Long): BaseResponse<Unit>?
     suspend fun getMovies(): BaseResponse<MoviePageData>?
 
@@ -45,6 +46,12 @@ interface AdminRepository {
     suspend fun createHoliday(holiday: Holiday): BaseResponse<Holiday>?
     suspend fun updateHoliday(holiday: Holiday): BaseResponse<Holiday>?
     suspend fun deleteHoliday(holidayId: Long): BaseResponse<Unit>?
+
+    // Food
+    suspend fun getAllFood(): BaseResponse<List<FoodItem>>?
+    suspend fun createFood(request: FoodItem): BaseResponse<FoodItem>?
+    suspend fun updateFood(id: Long, request: FoodItem): BaseResponse<FoodItem>?
+    suspend fun deleteFood(id: Long): BaseResponse<Unit>?
 
     // Seats
     suspend fun createSeats(request: List<CreateSeatRequest>): BaseResponse<Unit>?

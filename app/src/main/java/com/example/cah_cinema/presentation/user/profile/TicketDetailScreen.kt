@@ -186,6 +186,6 @@ fun TicketDetailScreen(
 @Composable
 fun TicketDetailScreenPreview() {
     CAH_CinemaTheme {
-        TicketDetailScreen(viewModel = ProfileViewModel())
+        // Mock preview
     }
 }

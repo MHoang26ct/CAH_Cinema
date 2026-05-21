@@ -1,6 +1,7 @@
 package com.example.cah_cinema.presentation.admin.voucher
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.data.model.CreateVoucherRequest
+import com.example.cah_cinema.data.model.UpdateVoucherRequest
 import com.example.cah_cinema.data.model.VoucherItem
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.presentation.user.booking.formatPrice
@@ -33,20 +35,46 @@ fun AdminVoucherScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
+    
+    var showDialogByVoucher by remember { mutableStateOf<VoucherItem?>(null) }
+    var isAddingNew by remember { mutableStateOf(false) }
 
     AdminVoucherContent(
         state = state,
         onNavigate = onNavigate,
-        onAddClick = { showAddDialog = true }
+        onAddClick = { isAddingNew = true },
+        onEditClick = { showDialogByVoucher = it },
+        onDeleteClick = { viewModel.deleteVoucher(it.id) }
     )
 
-    if (showAddDialog) {
+    if (isAddingNew || showDialogByVoucher != null) {
         AddVoucherDialog(
-            onDismiss = { showAddDialog = false },
+            voucher = showDialogByVoucher,
+            onDismiss = { 
+                isAddingNew = false
+                showDialogByVoucher = null
+            },
             onConfirm = { request ->
-                viewModel.createVoucher(request) {
-                    showAddDialog = false
+                if (isAddingNew) {
+                    viewModel.createVoucher(request) { isAddingNew = false }
+                } else {
+                    viewModel.updateVoucher(
+                        UpdateVoucherRequest(
+                            voucherId = showDialogByVoucher!!.id,
+                            code = request.code,
+                            type = request.type,
+                            value = request.value,
+                            quantity = request.quantity,
+                            startAt = request.startAt,
+                            expiredAt = request.expiredAt,
+                            isActive = true,
+                            isDeleted = false,
+                            minOrderValue = request.minOrderValue,
+                            maxDiscount = request.maxDiscount
+                        )
+                    ) {
+                        showDialogByVoucher = null
+                    }
                 }
             }
         )
@@ -57,7 +85,9 @@ fun AdminVoucherScreen(
 fun AdminVoucherContent(
     state: AdminVoucherState,
     onNavigate: (String) -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onEditClick: (VoucherItem) -> Unit,
+    onDeleteClick: (VoucherItem) -> Unit
 ) {
     AdminScaffold(
         title = "Voucher & Khuyến mãi"
@@ -101,7 +131,11 @@ fun AdminVoucherContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(state.vouchers) { voucher ->
-                        VoucherCard(voucher)
+                        VoucherCard(
+                            voucher = voucher,
+                            onEdit = { onEditClick(voucher) },
+                            onDelete = { onDeleteClick(voucher) }
+                        )
                     }
                 }
             }
@@ -111,34 +145,22 @@ fun AdminVoucherContent(
 
 @Composable
 fun AddVoucherDialog(
+    voucher: VoucherItem? = null,
     onDismiss: () -> Unit,
     onConfirm: (CreateVoucherRequest) -> Unit
 ) {
-    var code by remember { mutableStateOf("") }
-    var value by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf(voucher?.code ?: "") }
+    var value by remember { mutableStateOf(voucher?.value?.toString() ?: "") }
     var quantity by remember { mutableStateOf("") }
-    var minOrderValue by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("FIXED_AMOUNT") }
+    var minOrderValue by remember { mutableStateOf(voucher?.minOrderValue?.toString() ?: "") }
+    var type by remember { mutableStateOf(voucher?.type ?: "FIXED_AMOUNT") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Tạo voucher mới", color = Color.White) },
+        title = { Text(if (voucher == null) "Tạo voucher mới" else "Cập nhật voucher", color = Color.White) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = code, 
-                    onValueChange = { code = it }, 
-                    label = { Text("Mã voucher") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
+                AdminTextField(value = code, onValueChange = { code = it }, label = "Mã voucher")
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = type == "FIXED_AMOUNT", onClick = { type = "FIXED_AMOUNT" })
@@ -148,48 +170,9 @@ fun AddVoucherDialog(
                     Text("Phần trăm", color = Color.White, fontSize = 12.sp)
                 }
 
-                OutlinedTextField(
-                    value = value, 
-                    onValueChange = { value = it }, 
-                    label = { Text("Giá trị") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
-                OutlinedTextField(
-                    value = quantity, 
-                    onValueChange = { quantity = it }, 
-                    label = { Text("Số lượng") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
-                OutlinedTextField(
-                    value = minOrderValue, 
-                    onValueChange = { minOrderValue = it }, 
-                    label = { Text("Đơn hàng tối thiểu") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
+                AdminTextField(value = value, onValueChange = { value = it }, label = "Giá trị")
+                AdminTextField(value = quantity, onValueChange = { quantity = it }, label = "Số lượng")
+                AdminTextField(value = minOrderValue, onValueChange = { minOrderValue = it }, label = "Đơn hàng tối thiểu")
             }
         },
         confirmButton = {
@@ -210,18 +193,22 @@ fun AddVoucherDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = CyanBlue)
             ) {
-                Text("XÁC NHẬN", color = Color.Black)
+                Text(if (voucher == null) "XÁC NHẬN" else "CẬP NHẬT", color = Color.Black)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("HỦY") }
+            TextButton(onClick = onDismiss) { Text("HỦY", color = Color.White.copy(alpha = 0.6f)) }
         },
         containerColor = Color(0xFF21212B)
     )
 }
 
 @Composable
-fun VoucherCard(voucher: VoucherItem) {
+fun VoucherCard(
+    voucher: VoucherItem, 
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color(0xFF1C1C22),
@@ -249,15 +236,38 @@ fun VoucherCard(voucher: VoucherItem) {
                 Text(text = "Hết hạn: ${voucher.expiredAt}", color = Color.White.copy(alpha = 0.3f), style = MaterialTheme.typography.labelSmall)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = { /* Edit */ }) {
+                IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.4f))
                 }
-                IconButton(onClick = { /* Delete */ }) {
+                IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f))
                 }
             }
         }
     }
+}
+
+@Composable
+fun AdminTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value, 
+        onValueChange = onValueChange, 
+        label = { Text(label) },
+        modifier = modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            focusedLabelColor = CyanBlue,
+            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+            focusedBorderColor = CyanBlue,
+            unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
+        )
+    )
 }
 
 @Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
@@ -273,7 +283,9 @@ fun AdminVoucherPreview() {
                 isLoading = false
             ),
             onNavigate = {},
-            onAddClick = {}
+            onAddClick = {},
+            onEditClick = {},
+            onDeleteClick = {}
         )
     }
 }

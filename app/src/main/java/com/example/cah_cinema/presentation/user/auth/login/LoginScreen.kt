@@ -16,11 +16,15 @@ import androidx.compose.ui.unit.sp
 import com.example.cah_cinema.ui.theme.CyanBlue
 import com.example.cah_cinema.ui.theme.TextGray
 
+import androidx.compose.ui.platform.LocalContext
+import android.app.Application
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = viewModel(),
+    viewModel: LoginViewModel = viewModel(
+        factory = LoginViewModel.Factory(LocalContext.current.applicationContext as Application)
+    ),
     onLoginSuccess: (String) -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
     onRegisterClick: () -> Unit = {}

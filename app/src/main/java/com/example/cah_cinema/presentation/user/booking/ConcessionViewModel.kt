@@ -63,7 +63,7 @@ class ConcessionViewModel(
             id = this.id.toString(),
             name = this.name,
             price = this.price,
-            imageUrl = this.imageUrl,
+            imageUrl = this.imageUrl ?: "",
             type = when(this.category) {
                 "Drink" -> ConcessionType.DRINK
                 "Food" -> ConcessionType.POPCORN

@@ -24,6 +24,12 @@ interface ApiService {
     @POST("api/v1/auth/fp-change-password")
     suspend fun changeForgotPassword(@Body request: ResetPasswordRequest): Response<BaseResponse<Unit>>
 
+    @POST("api/v1/auth/logout")
+    suspend fun logout(@Body request: RefreshTokenRequest): Response<BaseResponse<Unit>>
+
+    @POST("api/v1/auth/change-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): Response<BaseResponse<Unit>>
+
     // 2. Movies
     @GET("api/v1/public/movies")
     suspend fun getMovies(
@@ -37,6 +43,9 @@ interface ApiService {
     @GET("api/v1/public/movies/{id}")
     suspend fun getMovieDetail(@Path("id") id: Long): Response<BaseResponse<MovieDetail>>
 
+    @GET("api/v1/public/movies/featured")
+    suspend fun getFeaturedMovies(): Response<BaseResponse<FeaturedMoviesData>>
+
     @GET("api/v1/public/genres/all")
     suspend fun getAllGenres(): Response<BaseResponse<List<Genre>>>
 
@@ -49,7 +58,7 @@ interface ApiService {
     suspend fun getShowtimesByMovie(
         @Path("movieId") movieId: Long,
         @Query("date") date: String // format: yyyy-MM-dd
-    ): Response<BaseResponse<List<MovieShowtimeItem>>>
+    ): Response<BaseResponse<MovieShowtimesResponse>>
 
     @GET("api/v1/public/showtimes/cinemas/{cinemaId}")
     suspend fun getShowtimesByCinema(
@@ -83,7 +92,7 @@ interface ApiService {
     suspend fun confirmPayment(
         @Path("bookingId") bookingId: Long,
         @Body request: ConfirmPaymentRequest
-    ): Response<BaseResponse<Unit>>
+    ): Response<BaseResponse<ConfirmPaymentResponse>>
 
     // 6. Vouchers & Food
     @GET("api/v1/user/vouchers")
@@ -225,4 +234,20 @@ interface ApiService {
 
     @DELETE("api/v1/admin/holiday/delete")
     suspend fun deleteHoliday(@Body request: DeleteHolidayRequest): Response<BaseResponse<Unit>>
+
+    // Admin Food
+    @GET("api/v1/admin/food")
+    suspend fun getAdminFoods(): Response<BaseResponse<List<FoodItem>>>
+
+    @POST("api/v1/admin/food")
+    suspend fun createFood(@Body request: FoodItem): Response<BaseResponse<FoodItem>>
+
+    @PUT("api/v1/admin/food/{id}")
+    suspend fun updateFood(
+        @Path("id") id: Long,
+        @Body request: FoodItem
+    ): Response<BaseResponse<FoodItem>>
+
+    @DELETE("api/v1/admin/food/{id}")
+    suspend fun deleteFood(@Path("id") id: Long): Response<BaseResponse<Unit>>
 }

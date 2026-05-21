@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,9 +39,11 @@ import com.example.cah_cinema.ui.theme.CyanBlue
 
 @Composable
 fun ChangePasswordScreen(
+    viewModel: ProfileViewModel,
     onBackClick: () -> Unit = {},
     onSaveClick: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
+    val state by viewModel.state.collectAsState()
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -117,14 +120,19 @@ fun ChangePasswordScreen(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-            shape = RoundedCornerShape(28.dp)
+            shape = RoundedCornerShape(28.dp),
+            enabled = !state.isLoading && newPassword.isNotEmpty() && newPassword == confirmPassword
         ) {
-            Text(
-                text = "Lưu thay đổi",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.Black,
-                fontWeight = FontWeight.Bold
-            )
+            if (state.isLoading) {
+                androidx.compose.material3.CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+            } else {
+                Text(
+                    text = "Lưu thay đổi",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -133,6 +141,6 @@ fun ChangePasswordScreen(
 @Composable
 fun ChangePasswordScreenPreview() {
     CAH_CinemaTheme {
-        ChangePasswordScreen()
+        // Mock preview doesn't need real application context
     }
 }

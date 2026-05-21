@@ -16,10 +16,10 @@ import kotlinx.coroutines.launch
 
 data class AdminCinemaState(
     val cinemas: List<CinemaItem> = listOf(
-        CinemaItem(1, "Cinestar Quốc Thanh", "271 Nguyễn Trãi, Q.1, TP.HCM", "028 7300 8881"),
-        CinemaItem(2, "Cinestar Hai Bà Trưng", "233 Hai Bà Trưng, Q.3, TP.HCM", "028 7300 7279"),
-        CinemaItem(3, "Cinestar Sinh Viên", "Nhà văn hóa Sinh viên ĐHQG, Thủ Đức", "028 7300 1122"),
-        CinemaItem(4, "Cinestar Lâm Đồng", "Quảng trường Hòa Bình, Đà Lạt", "0263 7300 888")
+        CinemaItem(1, "Cinestar Quốc Thanh", "271 Nguyễn Trãi, Q.1, TP.HCM", null, "028 7300 8881"),
+        CinemaItem(2, "Cinestar Hai Bà Trưng", "233 Hai Bà Trưng, Q.3, TP.HCM", null, "028 7300 7279"),
+        CinemaItem(3, "Cinestar Sinh Viên", "Nhà văn hóa Sinh viên ĐHQG, Thủ Đức", null, "028 7300 1122"),
+        CinemaItem(4, "Cinestar Lâm Đồng", "Quảng trường Hòa Bình, Đà Lạt", null, "0263 7300 888")
     ),
     val roomsByCinema: Map<Long, List<RoomItem>> = mapOf(
         1L to listOf(RoomItem(101, 1, "Phòng 01"), RoomItem(102, 1, "Phòng 02"), RoomItem(103, 1, "Phòng 03")),
@@ -89,7 +89,7 @@ class AdminCinemaViewModel(
         _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             try {
-                val request = CreateCinemaRequest(name, address, hotline)
+                val request = CreateCinemaRequest(name, address, null, hotline)
                 val response = repository.createCinema(request)
                 if (response?.code == 200) {
                     loadCinemas()
@@ -113,6 +113,52 @@ class AdminCinemaViewModel(
             } catch (e: Exception) {
                 // Handle error
             }
+        }
+    }
+
+    fun updateCinema(id: Long, name: String, address: String, hotline: String, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val request = CreateCinemaRequest(name, address, null, hotline)
+                val response = repository.updateCinema(id, request)
+                if (response?.code == 200) {
+                    loadCinemas()
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi cập nhật rạp") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun updateRoom(roomId: Long, cinemaId: Long, roomName: String, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val response = repository.updateRoom(roomId, CreateRoomRequest(cinemaId, roomName))
+                if (response?.code == 200) {
+                    loadRooms(cinemaId)
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi cập nhật phòng") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun deleteRoom(roomId: Long, cinemaId: Long) {
+        viewModelScope.launch {
+            try {
+                val response = repository.deleteRoom(roomId)
+                if (response?.code == 200) {
+                    loadRooms(cinemaId)
+                }
+            } catch (e: Exception) {}
         }
     }
 

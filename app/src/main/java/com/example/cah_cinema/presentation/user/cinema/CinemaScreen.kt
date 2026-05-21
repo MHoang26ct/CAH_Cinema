@@ -30,7 +30,7 @@ import com.example.cah_cinema.ui.theme.TextGray
 @Composable
 fun CinemaScreen(
     viewModel: CinemaViewModel = viewModel(),
-    onCinemaClick: (String) -> Unit = {}
+    onCinemaClick: (Long) -> Unit = {}
 ) {
     // GHI CHÚ BACKEND: Quan sát trạng thái rạp và xử lý các trạng thái đang tải/lỗi nếu cần
     val state by viewModel.state.collectAsState()
@@ -200,7 +200,7 @@ fun CinemaItemCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = cinema.phone,
+                        text = cinema.hotline ?: "",
                         color = TextGray,
                         fontSize = 11.sp
                     )

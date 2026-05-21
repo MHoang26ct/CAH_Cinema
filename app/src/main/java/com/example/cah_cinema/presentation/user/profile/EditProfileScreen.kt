@@ -162,14 +162,19 @@ fun EditProfileScreen(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-            shape = RoundedCornerShape(28.dp)
+            shape = RoundedCornerShape(28.dp),
+            enabled = !state.isLoading
         ) {
-            Text(
-                text = "Lưu thay đổi",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.Black,
-                fontWeight = FontWeight.Bold
-            )
+            if (state.isLoading) {
+                androidx.compose.material3.CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+            } else {
+                Text(
+                    text = "Lưu thay đổi",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -178,6 +183,6 @@ fun EditProfileScreen(
 @Composable
 fun EditProfileScreenPreview() {
     CAH_CinemaTheme {
-        EditProfileScreen(viewModel = ProfileViewModel())
+        // Mock preview
     }
 }

@@ -2,9 +2,9 @@ package com.example.cah_cinema.presentation.user.cinema
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cah_cinema.data.repository.CinemaRepositoryImpl
 import com.example.cah_cinema.domain.model.Cinema
-import com.example.cah_cinema.data.remote.RetrofitClient
-import com.example.cah_cinema.data.model.CinemaItem
+import com.example.cah_cinema.domain.repository.CinemaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +18,9 @@ data class CinemaState(
     val errorMessage: String? = null,
 )
 
-class CinemaViewModel : ViewModel() {
+class CinemaViewModel(
+    private val repository: CinemaRepository = CinemaRepositoryImpl()
+) : ViewModel() {
     private val allCinemas = mutableListOf<Cinema>()
     private val _state = MutableStateFlow(CinemaState())
     val state: StateFlow<CinemaState> = _state.asStateFlow()
@@ -30,30 +32,14 @@ class CinemaViewModel : ViewModel() {
     private fun loadCinemas() {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
-            try {
-                val response = RetrofitClient.apiService.getCinemas()
-                if (response.isSuccessful) {
-                    val cinemaItems = response.body()?.data ?: emptyList()
-                    val domainCinemas = cinemaItems.map { it.toDomainCinema() }
-                    allCinemas.clear()
-                    allCinemas.addAll(domainCinemas)
-                    _state.update { it.copy(cinemas = domainCinemas, isLoading = false) }
-                } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = "Không thể tải danh sách rạp") }
-                }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            repository.getCinemas().onSuccess { domainCinemas ->
+                allCinemas.clear()
+                allCinemas.addAll(domainCinemas)
+                _state.update { it.copy(cinemas = domainCinemas, isLoading = false) }
+            }.onFailure { error ->
+                _state.update { it.copy(isLoading = false, errorMessage = error.message ?: "Không thể tải danh sách rạp") }
             }
         }
-    }
-
-    private fun CinemaItem.toDomainCinema(): Cinema {
-        return Cinema(
-            id = this.id.toString(),
-            name = this.name,
-            address = this.address,
-            phone = this.hotline
-        )
     }
 
     fun onSearchQueryChange(newQuery: String) {

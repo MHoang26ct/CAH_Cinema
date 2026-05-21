@@ -25,6 +25,10 @@ class AdminRepositoryImpl : AdminRepository {
         return RetrofitClient.apiService.createMovie(request).body()
     }
 
+    override suspend fun updateMovie(id: Long, request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>? {
+        return RetrofitClient.apiService.updateMovie(id, request).body()
+    }
+
     override suspend fun deleteMovie(id: Long): BaseResponse<Unit>? {
         return RetrofitClient.apiService.deleteMovie(id).body()
     }
@@ -127,6 +131,22 @@ class AdminRepositoryImpl : AdminRepository {
 
     override suspend fun deleteHoliday(holidayId: Long): BaseResponse<Unit>? {
         return RetrofitClient.apiService.deleteHoliday(DeleteHolidayRequest(holidayId)).body()
+    }
+
+    override suspend fun getAllFood(): BaseResponse<List<FoodItem>>? {
+        return RetrofitClient.apiService.getAdminFoods().body()
+    }
+
+    override suspend fun createFood(request: FoodItem): BaseResponse<FoodItem>? {
+        return RetrofitClient.apiService.createFood(request).body()
+    }
+
+    override suspend fun updateFood(id: Long, request: FoodItem): BaseResponse<FoodItem>? {
+        return RetrofitClient.apiService.updateFood(id, request).body()
+    }
+
+    override suspend fun deleteFood(id: Long): BaseResponse<Unit>? {
+        return RetrofitClient.apiService.deleteFood(id).body()
     }
 
     override suspend fun createSeats(request: List<CreateSeatRequest>): BaseResponse<Unit>? {

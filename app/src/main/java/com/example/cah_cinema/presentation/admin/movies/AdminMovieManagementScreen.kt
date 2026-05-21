@@ -34,22 +34,32 @@ fun AdminMovieManagementScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showDialogByMovie by remember { mutableStateOf<MovieListItem?>(null) }
+    var isAddingNew by remember { mutableStateOf(false) }
 
     AdminMovieManagementContent(
         state = state,
         onNavigate = onNavigate,
         onDeleteMovie = { viewModel.deleteMovie(it) },
-        onAddClick = { showAddDialog = true }
+        onAddClick = { isAddingNew = true },
+        onEditClick = { showDialogByMovie = it }
     )
 
-    if (showAddDialog) {
+    if (isAddingNew || showDialogByMovie != null) {
         AddMovieDialog(
+            movie = showDialogByMovie,
             genres = state.genres,
-            onDismiss = { showAddDialog = false },
+            onDismiss = { 
+                isAddingNew = false
+                showDialogByMovie = null
+            },
             onConfirm = { request ->
-                viewModel.createMovie(request) {
-                    showAddDialog = false
+                if (isAddingNew) {
+                    viewModel.createMovie(request) { isAddingNew = false }
+                } else {
+                    showDialogByMovie?.id?.let { id ->
+                        viewModel.updateMovie(id, request) { showDialogByMovie = null }
+                    }
                 }
             }
         )
@@ -61,7 +71,8 @@ fun AdminMovieManagementContent(
     state: AdminMovieState,
     onNavigate: (String) -> Unit,
     onDeleteMovie: (Long) -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onEditClick: (MovieListItem) -> Unit
 ) {
     AdminScaffold(
         title = "Quản lý Phim"
@@ -122,7 +133,11 @@ fun AdminMovieManagementContent(
                         .background(Color(0xFF1C1C22).copy(alpha = 0.5f))
                 ) {
                     items(state.movies) { movie ->
-                        MovieRow(movie, onDelete = { onDeleteMovie(movie.id) })
+                        MovieRow(
+                            movie = movie, 
+                            onDelete = { onDeleteMovie(movie.id) },
+                            onEdit = { onEditClick(movie) }
+                        )
                         HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
                     }
                 }
@@ -134,21 +149,22 @@ fun AdminMovieManagementContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddMovieDialog(
+    movie: MovieListItem? = null,
     genres: List<com.example.cah_cinema.data.model.Genre>,
     onDismiss: () -> Unit,
     onConfirm: (UpdateOrCreateMovieRequest) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
+    var title by remember { mutableStateOf(movie?.title ?: "") }
     var description by remember { mutableStateOf("") }
-    var duration by remember { mutableStateOf("") }
+    var duration by remember { mutableStateOf(movie?.duration?.toString() ?: "") }
     
     // Release Date Components
     var day by remember { mutableStateOf("16") }
     var month by remember { mutableStateOf("05") }
     var year by remember { mutableStateOf("2026") }
     
-    var ageRating by remember { mutableStateOf("T13") }
-    var posterUrl by remember { mutableStateOf("") }
+    var ageRating by remember { mutableStateOf(movie?.ageRating ?: "T13") }
+    var posterUrl by remember { mutableStateOf(movie?.posterUrl ?: "") }
     var trailerUrl by remember { mutableStateOf("") }
     var directorName by remember { mutableStateOf("") }
     var actorList by remember { mutableStateOf("") }
@@ -159,7 +175,7 @@ fun AddMovieDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Thêm phim mới", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text(if (movie == null) "Thêm phim mới" else "Cập nhật phim", color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -265,9 +281,9 @@ fun AddMovieDialog(
                     )
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-                enabled = title.isNotBlank() && selectedGenreIds.isNotEmpty()
+                enabled = title.isNotBlank()
             ) {
-                Text("XÁC NHẬN", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text(if (movie == null) "XÁC NHẬN" else "CẬP NHẬT", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -303,7 +319,7 @@ fun AdminTextField(
 }
 
 @Composable
-fun MovieRow(movie: MovieListItem, onDelete: () -> Unit) {
+fun MovieRow(movie: MovieListItem, onDelete: () -> Unit, onEdit: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -336,12 +352,12 @@ fun MovieRow(movie: MovieListItem, onDelete: () -> Unit) {
             text = movie.ageRating, 
             color = CyanBlue, 
             modifier = Modifier.weight(1f), 
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall, 
             fontWeight = FontWeight.Bold
         )
         Row(modifier = Modifier.weight(2f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconButton(onClick = { /* Edit */ }) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.6f))
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.4f))
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f))
@@ -357,15 +373,16 @@ fun AdminMovieManagementPreview() {
         AdminMovieManagementContent(
             state = AdminMovieState(
                 movies = listOf(
-                    MovieListItem(1, "HẸN EM NGÀY NHẬT THỰC", 118, "T16", ""),
-                    MovieListItem(2, "KUNG FU PANDA 4", 94, "P", ""),
-                    MovieListItem(3, "CAPTAIN AMERICA 4", 120, "T13", "")
+                    MovieListItem(1, "HẸN EM NGÀY NHẬT THỰC", 118, "2026-05-16", "T16", ""),
+                    MovieListItem(2, "KUNG FU PANDA 4", 94, "2026-03-08", "P", ""),
+                    MovieListItem(3, "CAPTAIN AMERICA 4", 120, "2025-02-14", "T13", "")
                 ),
                 isLoading = false
             ),
             onNavigate = {},
             onDeleteMovie = {},
-            onAddClick = {}
+            onAddClick = {},
+            onEditClick = {}
         )
     }
 }

@@ -34,25 +34,52 @@ fun AdminShowtimeScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
+    
+    var showEditDialogByShowtime by remember { mutableStateOf<ShowtimeInfo?>(null) }
+    var isAddingNew by remember { mutableStateOf(false) }
 
     AdminShowtimeContent(
         state = state,
         onNavigate = onNavigate,
         onDeleteShowtime = { viewModel.deleteShowtime(it) },
-        onAddClick = { showAddDialog = true }
+        onAddClick = { isAddingNew = true },
+        onEditClick = { showEditDialogByShowtime = it }
     )
 
-    if (showAddDialog) {
+    if (isAddingNew) {
         AddShowtimeDialog(
             movies = state.movies,
             cinemas = state.cinemas,
             rooms = state.rooms,
             onCinemaSelected = { viewModel.loadRooms(it) },
-            onDismiss = { showAddDialog = false },
+            onDismiss = { isAddingNew = false },
             onConfirm = { request ->
                 viewModel.createShowtime(request) {
-                    showAddDialog = false
+                    isAddingNew = false
+                }
+            }
+        )
+    }
+
+    if (showEditDialogByShowtime != null) {
+        EditShowtimeStatusDialog(
+            showtime = showEditDialogByShowtime!!,
+            onDismiss = { showEditDialogByShowtime = null },
+            onConfirm = { status ->
+                val current = showEditDialogByShowtime!!
+                viewModel.updateShowtime(
+                    UpdateShowtimeRequest(
+                        showtimeId = current.id,
+                        movieId = 0, // Backend might ignore if ID is provided, but API says req
+                        roomId = 0,
+                        format = current.format,
+                        startTime = current.startTime,
+                        endTime = current.endTime,
+                        basePrice = current.basePrice,
+                        status = status
+                    )
+                ) {
+                    showEditDialogByShowtime = null
                 }
             }
         )
@@ -64,7 +91,8 @@ fun AdminShowtimeContent(
     state: AdminShowtimeState,
     onNavigate: (String) -> Unit,
     onDeleteShowtime: (Long) -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onEditClick: (ShowtimeInfo) -> Unit
 ) {
     AdminScaffold(
         title = "Quản lý Lịch chiếu"
@@ -83,7 +111,7 @@ fun AdminShowtimeContent(
                 Text(
                     text = "Lịch chiếu hôm nay",
                     color = Color.White,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Button(
@@ -118,13 +146,51 @@ fun AdminShowtimeContent(
                             )
                         }
                         items(movieItem.showtimes) { showtime ->
-                            ShowtimeItem(showtime, onDelete = { onDeleteShowtime(showtime.id) })
+                            ShowtimeItem(
+                                showtime = showtime, 
+                                onDelete = { onDeleteShowtime(showtime.id) },
+                                onEdit = { onEditClick(showtime) }
+                            )
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun EditShowtimeStatusDialog(
+    showtime: ShowtimeInfo,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var selectedStatus by remember { mutableStateOf(showtime.status) }
+    val statuses = listOf("AVAILABLE", "SOLD_OUT", "HIDDEN")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cập nhật trạng thái lịch chiếu", color = Color.White) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                statuses.forEach { status ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedStatus == status, onClick = { selectedStatus = status })
+                        Text(status, color = Color.White, modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selectedStatus) }, colors = ButtonDefaults.buttonColors(containerColor = CyanBlue)) {
+                Text("CẬP NHẬT", color = Color.Black)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("HỦY") }
+        },
+        containerColor = Color(0xFF21212B)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -378,7 +444,7 @@ fun RadioButtonOption(text: String, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun ShowtimeItem(showtime: ShowtimeInfo, onDelete: () -> Unit) {
+fun ShowtimeItem(showtime: ShowtimeInfo, onDelete: () -> Unit, onEdit: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color(0xFF1C1C22),
@@ -393,19 +459,41 @@ fun ShowtimeItem(showtime: ShowtimeInfo, onDelete: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.AccessTime, contentDescription = null, tint = CyanBlue, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    // Format the date properly for display if possible
                     Text(
-                        text = "${showtime.startTime.substringAfter("T").substring(0, 5)} - ${showtime.endTime.substringAfter("T").substring(0, 5)} | Phòng: ${showtime.roomName}",
+                        text = "${showtime.startTime.substringAfter("T").substring(0, 5)} - ${showtime.endTime.substringAfter("T").substring(0, 5)} | Phòng: ${showtime.roomName}", 
                         color = Color.White, 
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Định dạng: ${showtime.format}", color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Định dạng: ${showtime.format}", color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Surface(
+                        color = when(showtime.status) {
+                            "AVAILABLE" -> Color.Green.copy(alpha = 0.1f)
+                            "SOLD_OUT" -> Color.Red.copy(alpha = 0.1f)
+                            else -> Color.Gray.copy(alpha = 0.1f)
+                        },
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = showtime.status,
+                            color = when(showtime.status) {
+                                "AVAILABLE" -> Color.Green
+                                "SOLD_OUT" -> Color.Red
+                                else -> Color.Gray
+                            },
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
             Row {
-                IconButton(onClick = { /* Edit */ }) {
+                IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.4f))
                 }
                 IconButton(onClick = onDelete) {
@@ -435,7 +523,8 @@ fun AdminShowtimePreview() {
             ),
             onNavigate = {},
             onDeleteShowtime = {},
-            onAddClick = {}
+            onAddClick = {},
+            onEditClick = {}
         )
     }
 }

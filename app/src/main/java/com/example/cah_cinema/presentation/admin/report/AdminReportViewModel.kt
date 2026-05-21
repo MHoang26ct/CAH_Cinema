@@ -2,6 +2,7 @@ package com.example.cah_cinema.presentation.admin.report
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cah_cinema.data.model.BusinessOverviewResponse
 import com.example.cah_cinema.data.model.CinemaRevenueResponse
 import com.example.cah_cinema.data.model.DailyRevenueResponse
 import com.example.cah_cinema.data.model.MovieRevenueResponse
@@ -16,21 +17,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class AdminReportState(
-    val dailyRevenue: List<DailyRevenueResponse> = listOf(
-        DailyRevenueResponse("2026-05-10", 12000000.0, 150),
-        DailyRevenueResponse("2026-05-11", 15000000.0, 180),
-        DailyRevenueResponse("2026-05-12", 9000000.0, 110),
-        DailyRevenueResponse("2026-05-13", 18000000.0, 220)
-    ),
-    val movieRevenue: List<MovieRevenueResponse> = listOf(
-        MovieRevenueResponse(1, "HẸN EM NGÀY NHẬT THỰC", 45000000.0, 600),
-        MovieRevenueResponse(2, "KUNG FU PANDA 4", 32000000.0, 450),
-        MovieRevenueResponse(3, "MA DA", 28000000.0, 380)
-    ),
-    val cinemaRevenue: List<CinemaRevenueResponse> = listOf(
-        CinemaRevenueResponse(1, "Cinestar Quốc Thanh", 55000000.0, 750),
-        CinemaRevenueResponse(2, "Cinestar Hai Bà Trưng", 48000000.0, 620)
-    ),
+    val businessOverview: BusinessOverviewResponse? = null,
+    val dailyRevenue: List<DailyRevenueResponse> = emptyList(),
+    val movieRevenue: List<MovieRevenueResponse> = emptyList(),
+    val cinemaRevenue: List<CinemaRevenueResponse> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -56,11 +46,13 @@ class AdminReportViewModel(
         
         viewModelScope.launch {
             try {
+                val overview = repository.getBusinessOverview(fromDate, toDate)
                 val daily = repository.getDailyRevenue(fromDate, toDate)
                 val movies = repository.getMovieRevenue(fromDate, toDate)
                 val cinemas = repository.getCinemaRevenue(fromDate, toDate)
 
                 _state.update { it.copy(
+                    businessOverview = overview?.data,
                     dailyRevenue = daily?.data ?: emptyList(),
                     movieRevenue = movies?.data ?: emptyList(),
                     cinemaRevenue = cinemas?.data ?: emptyList(),

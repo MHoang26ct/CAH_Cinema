@@ -3,6 +3,7 @@ package com.example.cah_cinema.presentation.admin.voucher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.model.CreateVoucherRequest
+import com.example.cah_cinema.data.model.UpdateVoucherRequest
 import com.example.cah_cinema.data.model.VoucherItem
 import com.example.cah_cinema.data.repository.AdminRepositoryImpl
 import com.example.cah_cinema.domain.repository.AdminRepository
@@ -62,6 +63,34 @@ class AdminVoucherViewModel(
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
+        }
+    }
+
+    fun updateVoucher(request: UpdateVoucherRequest, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val response = repository.updateVoucher(request)
+                if (response?.code == 200) {
+                    loadVouchers()
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi cập nhật voucher") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun deleteVoucher(id: Long) {
+        viewModelScope.launch {
+            try {
+                val response = repository.deleteVoucher(id)
+                if (response?.code == 200) {
+                    loadVouchers()
+                }
+            } catch (e: Exception) {}
         }
     }
 }

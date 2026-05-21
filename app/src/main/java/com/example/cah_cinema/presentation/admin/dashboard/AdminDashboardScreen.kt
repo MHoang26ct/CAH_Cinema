@@ -78,16 +78,16 @@ fun AdminDashboardContent(
                     item {
                         AdminStatCard(
                             title = "Vé đã bán",
-                            value = "${state.overview?.ticketsSold ?: 0}",
+                            value = "${state.overview?.totalTicketsSold ?: 0}",
                             icon = Icons.Default.ConfirmationNumber,
                             color = Color(0xFF2196F3)
                         )
                     }
                     item {
                         AdminStatCard(
-                            title = "Phim đang chiếu",
-                            value = "${state.overview?.activeMovies ?: 0}",
-                            icon = Icons.Default.Movie,
+                            title = "Đơn thanh toán",
+                            value = "${state.overview?.totalBookingsPaid ?: 0}",
+                            icon = Icons.Default.Person,
                             color = Color(0xFFFF9800)
                         )
                     }
@@ -112,11 +112,15 @@ fun AdminDashboardPreview() {
         AdminDashboardContent(
             state = AdminDashboardState(
                 overview = BusinessOverviewResponse(
+                    from = "2026-05-19",
+                    to = "2026-05-19",
                     totalRevenue = 25000000.0,
                     ticketRevenue = 20000000.0,
                     foodRevenue = 5000000.0,
-                    ticketsSold = 350,
-                    activeMovies = 12
+                    totalTicketsSold = 350,
+                    totalBookingsPaid = 120,
+                    totalDiscount = 500000.0,
+                    averageOrderValue = 208333.33
                 ),
                 isLoading = false
             )

@@ -3,6 +3,7 @@ package com.example.cah_cinema.presentation.admin.showtime
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.model.*
+import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.data.repository.AdminRepositoryImpl
 import com.example.cah_cinema.domain.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,7 +73,7 @@ class AdminShowtimeViewModel(
     private fun loadMovies() {
         viewModelScope.launch {
             try {
-                val response = repository.getMovies()
+                val response = RetrofitClient.apiService.getMovies().body()
                 if (response?.code == 200) {
                     _state.update { it.copy(movies = response.data?.content ?: emptyList()) }
                 }
@@ -127,6 +128,23 @@ class AdminShowtimeViewModel(
                     loadShowtimes()
                 }
             } catch (e: Exception) { }
+        }
+    }
+
+    fun updateShowtime(request: UpdateShowtimeRequest, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val response = repository.updateShowtime(request)
+                if (response?.code == 200) {
+                    loadShowtimes()
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi cập nhật lịch chiếu") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
         }
     }
 }

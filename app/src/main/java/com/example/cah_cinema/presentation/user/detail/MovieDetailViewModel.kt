@@ -3,11 +3,11 @@ package com.example.cah_cinema.presentation.user.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.cah_cinema.domain.model.Cinema
+import com.example.cah_cinema.data.repository.MovieRepositoryImpl
+import com.example.cah_cinema.domain.model.CinemaWithShowtimes
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.MovieDate
-import com.example.cah_cinema.data.model.MovieDetail
-import com.example.cah_cinema.data.remote.RetrofitClient
+import com.example.cah_cinema.domain.repository.MovieRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,63 +17,36 @@ import kotlinx.coroutines.launch
 data class MovieDetailState(
     val movie: Movie? = null,
     val availableDates: List<MovieDate> = emptyList(),
-    val cinemas: List<Cinema> = emptyList(),
+    val cinemas: List<CinemaWithShowtimes> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 )
 
 class MovieDetailViewModel(
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val repository: MovieRepository = MovieRepositoryImpl()
 ) : ViewModel() {
     private val _state = MutableStateFlow(MovieDetailState())
     val state: StateFlow<MovieDetailState> = _state.asStateFlow()
 
-    private val movieId: String? = savedStateHandle["movieId"]
+    private val movieIdStr: String? = savedStateHandle["movieId"]
 
     init {
         loadMovieDetail()
     }
 
     private fun loadMovieDetail() {
-        val id = movieId?.toLongOrNull() ?: return
+        val id = movieIdStr?.toLongOrNull() ?: return
         
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         
         viewModelScope.launch {
-            try {
-                val response = RetrofitClient.apiService.getMovieDetail(id)
-                if (response.isSuccessful) {
-                    val apiResponse = response.body()
-                    val movieDetail = apiResponse?.data
-                    if (movieDetail != null) {
-                        _state.update { it.copy(
-                            movie = movieDetail.toDomainMovie(),
-                            isLoading = false
-                        ) }
-                    }
-                } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = "Không thể tải chi tiết phim") }
-                }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            repository.getMovieDetail(id).onSuccess { movie ->
+                _state.update { it.copy(movie = movie, isLoading = false) }
+            }.onFailure { error ->
+                _state.update { it.copy(isLoading = false, errorMessage = error.message ?: "Không thể tải chi tiết phim") }
             }
         }
-    }
-
-    private fun MovieDetail.toDomainMovie(): Movie {
-        return Movie(
-            id = this.id.toString(),
-            title = this.title,
-            genre = this.genres.joinToString(", ") { it.name },
-            posterUrl = this.posterUrl,
-            bannerUrl = this.posterUrl, // Tạm thời dùng poster làm banner
-            duration = "${this.duration} phút",
-            age = this.ageRating,
-            director = this.directorName ?: "",
-            cast = this.actorList ?: "",
-            description = this.description,
-            format = "2D"
-        )
     }
 
     fun onDateSelected(selectedDate: MovieDate) {

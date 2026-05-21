@@ -133,6 +133,7 @@ class MainActivity : ComponentActivity() {
                                     currentRoute = currentRoute,
                                     onNavigate = { route -> navController.navigateToTab(route) },
                                     onLogout = {
+                                        com.example.cah_cinema.data.remote.RetrofitClient.setToken(null)
                                         navController.navigate(Screen.Login.route) {
                                             popUpTo(0) { inclusive = true }
                                         }
@@ -249,6 +250,11 @@ class MainActivity : ComponentActivity() {
 
                                     composable(Screen.Register.route) {
                                         RegisterScreen(
+                                            onLoginSuccess = {
+                                                navController.navigate(Screen.Home.route) {
+                                                    popUpTo(Screen.Register.route) { inclusive = true }
+                                                }
+                                            },
                                             onLoginClick = {
                                                 navController.navigate(Screen.Login.route)
                                             }
@@ -326,7 +332,7 @@ class MainActivity : ComponentActivity() {
                                     composable(Screen.Cinema.route) {
                                         CinemaScreen(
                                             onCinemaClick = { cinemaId ->
-                                                navController.navigate(Screen.CinemaDetail.createRoute(cinemaId))
+                                                navController.navigate(Screen.CinemaDetail.createRoute(cinemaId.toString()))
                                             }
                                         )
                                     }
@@ -364,10 +370,14 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(Screen.ChangePassword.route) {
+                                        val viewModel: ProfileViewModel = viewModel()
                                         ChangePasswordScreen(
+                                            viewModel = viewModel,
                                             onBackClick = { navController.popBackStack() },
-                                            onSaveClick = { _, _, _ ->
-                                                navController.popBackStack()
+                                            onSaveClick = { old, new, _ ->
+                                                viewModel.changePassword(old, new) {
+                                                    navController.popBackStack()
+                                                }
                                             }
                                         )
                                     }
@@ -377,8 +387,10 @@ class MainActivity : ComponentActivity() {
                                         EditProfileScreen(
                                             viewModel = viewModel,
                                             onBackClick = { navController.popBackStack() },
-                                            onSaveClick = { _, _, _ ->
-                                                navController.popBackStack()
+                                            onSaveClick = { n, e, p ->
+                                                viewModel.updateProfile(n, e, p) {
+                                                    navController.popBackStack()
+                                                }
                                             }
                                         )
                                     }

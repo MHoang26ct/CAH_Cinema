@@ -23,15 +23,6 @@ data class Showtime(
     val format: String = "2D"
 )
 
-data class Cinema(
-    val id: String,
-    val name: String,
-    val address: String,
-    val imageUrl: String = "",
-    val phone: String = "",
-    val showtimes: List<Showtime> = emptyList()
-)
-
 data class MovieDate(
     val dayOfWeek: String,
     val date: String,

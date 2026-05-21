@@ -155,7 +155,7 @@ fun HomeHeader(userName: String) {
     ) {
         Column {
             Text(
-                text = "Chào mừng trở lại",
+                text = "Chào mừng",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextGray
             )

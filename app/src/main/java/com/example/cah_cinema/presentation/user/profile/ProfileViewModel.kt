@@ -1,7 +1,11 @@
 package com.example.cah_cinema.presentation.user.profile
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cah_cinema.data.local.TokenManager
+import com.example.cah_cinema.data.model.ChangePasswordRequest
+import com.example.cah_cinema.data.model.UpdateProfileRequest
 import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.util.ImageUrls
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +45,9 @@ sealed class ProfileEvent {
     object ViewTicketDetail : ProfileEvent()
 }
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+    private val tokenManager = TokenManager(application)
+    
     private val _state = MutableStateFlow(ProfileState())
     val state: StateFlow<ProfileState> = _state.asStateFlow()
 
@@ -50,15 +56,9 @@ class ProfileViewModel : ViewModel() {
     }
 
     fun loadProfileData() {
-        // MOCK DATA FOR ADMIN TESTING
-        if (RetrofitClient.getToken() == "mock_admin_token") {
-            _state.update { it.copy(
-                userName = "Admin CAH",
-                email = "admin@cah.com",
-                role = "ROLE_ADMIN",
-                rank = "Administrator",
-                isLoading = false
-            ) }
+        val currentToken = RetrofitClient.getToken()
+        if (currentToken.isNullOrBlank()) {
+            _state.update { it.copy(isLoading = false, errorMessage = "Vui lòng đăng nhập") }
             return
         }
 
@@ -106,6 +106,8 @@ class ProfileViewModel : ViewModel() {
     fun onEvent(event: ProfileEvent) {
         when (event) {
             ProfileEvent.Logout -> {
+                RetrofitClient.setToken(null)
+                tokenManager.clearToken()
             }
             ProfileEvent.ChangePassword -> {
             }
@@ -122,5 +124,38 @@ class ProfileViewModel : ViewModel() {
 
     fun updateRecentTicket(ticket: TicketInfo) {
         _state.update { it.copy(recentTicket = ticket) }
+    }
+
+    fun updateProfile(name: String, email: String, phone: String, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.updateMyProfile(UpdateProfileRequest(name, email, phone))
+                if (response.isSuccessful) {
+                    loadProfileData()
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = "Cập nhật thất bại") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun changePassword(old: String, new: String, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.changePassword(ChangePasswordRequest(old, new))
+                if (response.isSuccessful) {
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = "Đổi mật khẩu thất bại") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
     }
 }

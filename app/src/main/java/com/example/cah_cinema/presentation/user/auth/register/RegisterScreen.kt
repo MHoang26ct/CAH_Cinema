@@ -20,6 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.app.Application
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.R
 import com.example.cah_cinema.presentation.component.AuthTextField
@@ -29,7 +31,10 @@ import com.example.cah_cinema.ui.theme.CyanBlue
 @Composable
 fun RegisterScreen(
     modifier: Modifier = Modifier,
-    viewModel: RegisterViewModel = viewModel(),
+    viewModel: RegisterViewModel = viewModel(
+        factory = RegisterViewModel.Factory(LocalContext.current.applicationContext as Application)
+    ),
+    onLoginSuccess: () -> Unit = {},
     onLoginClick: () -> Unit = {}
 ) {
     Surface(
@@ -110,7 +115,7 @@ fun RegisterScreen(
 
             Button(
                 onClick = { 
-                    viewModel.register(onLoginClick)
+                    viewModel.register(onLoginSuccess)
                 },
                 modifier = Modifier
                     .fillMaxWidth()

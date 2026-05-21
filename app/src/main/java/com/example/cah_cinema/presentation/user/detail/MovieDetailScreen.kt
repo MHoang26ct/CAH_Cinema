@@ -28,9 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.cah_cinema.domain.model.Cinema
+import com.example.cah_cinema.domain.model.CinemaWithShowtimes
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.MovieDate
+import com.example.cah_cinema.domain.model.ShowtimeInfo
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
 import com.example.cah_cinema.ui.theme.TextGray
@@ -287,8 +288,8 @@ fun DateSelectionSection(dates: List<MovieDate>, onDateSelected: (MovieDate) -> 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CinemaSection(
-    cinema: Cinema,
-    onShowtimeClick: (com.example.cah_cinema.domain.model.Showtime) -> Unit
+    cinema: CinemaWithShowtimes,
+    onShowtimeClick: (ShowtimeInfo) -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -299,7 +300,7 @@ fun CinemaSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = cinema.name,
+                text = cinema.cinemaName,
                 style = MaterialTheme.typography.titleSmall,
                 color = Color.White,
                 fontWeight = FontWeight.Bold

@@ -3,12 +3,11 @@ package com.example.cah_cinema.presentation.user.booking
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cah_cinema.data.repository.BookingRepositoryImpl
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.Seat
 import com.example.cah_cinema.domain.model.SeatStatus
-import com.example.cah_cinema.domain.model.SeatType
-import com.example.cah_cinema.data.remote.RetrofitClient
-import com.example.cah_cinema.data.model.SeatItem
+import com.example.cah_cinema.domain.repository.BookingRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +31,8 @@ data class SeatSelectionState(
 )
 
 class SeatSelectionViewModel(
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val repository: BookingRepository = BookingRepositoryImpl()
 ) : ViewModel() {
     private val _state = MutableStateFlow(SeatSelectionState())
     val state: StateFlow<SeatSelectionState> = _state.asStateFlow()
@@ -62,37 +62,12 @@ class SeatSelectionViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         
         viewModelScope.launch {
-            try {
-                val response = RetrofitClient.apiService.getSeats(id)
-                if (response.isSuccessful) {
-                    val seatItems = response.body()?.data ?: emptyList()
-                    val domainSeats = seatItems.map { it.toDomainSeat() }
-                    _state.update { it.copy(seats = domainSeats, isLoading = false) }
-                } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = "Không thể tải sơ đồ ghế") }
-                }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            repository.getSeats(id).onSuccess { domainSeats ->
+                _state.update { it.copy(seats = domainSeats, isLoading = false) }
+            }.onFailure { error ->
+                _state.update { it.copy(isLoading = false, errorMessage = error.message ?: "Không thể tải sơ đồ ghế") }
             }
         }
-    }
-
-    private fun SeatItem.toDomainSeat(): Seat {
-        return Seat(
-            id = this.id.toString(),
-            row = ('A' + (this.row.toInt() - 1)).toString(),
-            number = this.col.toInt().toString().padStart(2, '0'),
-            type = when(this.type) {
-                "COUPLE" -> SeatType.COUPLE
-                "VIP" -> SeatType.VIP
-                else -> SeatType.REGULAR
-            },
-            status = when(this.status) {
-                "AVAILABLE" -> SeatStatus.AVAILABLE
-                "LOCKED", "BOOKED" -> SeatStatus.TAKEN_BY_OTHERS
-                else -> SeatStatus.MAINTENANCE
-            }
-        )
     }
 
     fun onSeatClick(seat: Seat) {
@@ -145,6 +120,6 @@ class SeatSelectionViewModel(
     }
 
     fun getTotalAmount(): Double {
-        return _state.value.basePrice // Tạm thời dùng basePrice, backend sẽ tính toán khi tạo booking
+        return _state.value.basePrice
     }
 }

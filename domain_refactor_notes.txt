@@ -1,0 +1,20 @@
+REFACOR PLAN FOR CLEAN ARCHITECTURE:
+
+1. [DONE] Define MovieRepository and its implementation.
+2. [DONE] Define AuthRepository and its implementation.
+3. [DONE] Create UseCases for Home and Auth.
+4. [DONE] Update HomeViewModel, LoginViewModel, RegisterViewModel.
+5. [TODO] Update CinemaRepository and CinemaViewModel.
+6. [TODO] Update AdminRepository to return Result<T> and handle DTO mapping in Data layer.
+7. [TODO] Fix SeatSelectionViewModel to use a Repository/UseCase.
+
+ISSUE: 401 Unauthorized on Login
+CAUSE:
+- Credential mismatch (Email/Pass in DB vs Input).
+- Database schema mismatch (Role column doesn't exist in users table, needs user_roles).
+- BCrypt vs PlainText mismatch (Resolved via SecurityConfig change).
+- is_deleted flag might be TRUE in DB.
+
+SOLUTION:
+- Provide corrected SQL script.
+- Ensure backend log output is checked.

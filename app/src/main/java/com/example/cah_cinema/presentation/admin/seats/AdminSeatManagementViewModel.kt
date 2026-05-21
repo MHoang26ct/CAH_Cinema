@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.model.CreateSeatRequest
+import com.example.cah_cinema.data.model.SeatItem
+import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.data.repository.AdminRepositoryImpl
 import com.example.cah_cinema.domain.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,29 +36,57 @@ class AdminSeatManagementViewModel(
     }
 
     private fun loadExistingLayout() {
-        // If it's a specific room, pre-load a mock layout to show it works
+        _state.update { it.copy(isLoading = true) }
+        viewModelScope.launch {
+            try {
+                // Fetch existing seats from API (Using a mock showtime or updating repo for room needed)
+                val response = RetrofitClient.apiService.getSeats(999) 
+                if (response.isSuccessful) {
+                    val seatItems = response.body()?.data ?: emptyList<SeatItem>()
+                    val newSelected = mutableSetOf<Pair<Int, Int>>()
+                    val newTypes = mutableMapOf<Pair<Int, Int>, Long>()
+                    
+                    seatItems.forEach { item: SeatItem ->
+                        val pos = item.row.toInt() to item.col.toInt()
+                        newSelected.add(pos)
+                        newTypes[pos] = when(item.seatType.name) {
+                            "VIP" -> 2L
+                            "COUPLE" -> 3L
+                            else -> 1L
+                        }
+                    }
+                    _state.update { it.copy(selectedSeats = newSelected, seatTypes = newTypes, isLoading = false) }
+                } else {
+                    loadInternalMock()
+                }
+            } catch (e: Exception) {
+                loadInternalMock()
+            }
+        }
+    }
+
+    private fun loadInternalMock() {
         if (roomId == 101L || roomId == 201L || roomId == 301L) {
             _state.update { currentState ->
                 val newSelected = mutableSetOf<Pair<Int, Int>>()
                 val newTypes = mutableMapOf<Pair<Int, Int>, Long>()
                 
-                // Mock a simple rectangular layout
                 for (r in 3..8) {
                     for (c in 2..11) {
                         val pos = r to c
                         newSelected.add(pos)
-                        newTypes[pos] = if (r >= 7) 2L else 1L // VIP for back rows
+                        newTypes[pos] = if (r >= 7) 2L else 1L
                     }
                 }
-                // Couple seats at the very back
                 for (c in 4..9 step 2) {
                     val pos = 9 to c
                     newSelected.add(pos)
                     newTypes[pos] = 3L
                 }
-
-                currentState.copy(selectedSeats = newSelected, seatTypes = newTypes)
+                currentState.copy(selectedSeats = newSelected, seatTypes = newTypes, isLoading = false)
             }
+        } else {
+            _state.update { it.copy(isLoading = false) }
         }
     }
 

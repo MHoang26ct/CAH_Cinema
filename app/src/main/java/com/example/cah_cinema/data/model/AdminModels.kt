@@ -4,31 +4,38 @@ import com.google.gson.annotations.SerializedName
 
 // Report Models
 data class BusinessOverviewResponse(
+    @SerializedName("from") val from: String,
+    @SerializedName("to") val to: String,
     @SerializedName("totalRevenue") val totalRevenue: Double,
     @SerializedName("ticketRevenue") val ticketRevenue: Double,
     @SerializedName("foodRevenue") val foodRevenue: Double,
-    @SerializedName("ticketsSold") val ticketsSold: Int,
-    @SerializedName("activeMovies") val activeMovies: Int
+    @SerializedName("totalTicketsSold") val totalTicketsSold: Long,
+    @SerializedName("totalBookingsPaid") val totalBookingsPaid: Long,
+    @SerializedName("totalDiscount") val totalDiscount: Double,
+    @SerializedName("averageOrderValue") val averageOrderValue: Double
 )
 
 data class DailyRevenueResponse(
     @SerializedName("date") val date: String,
     @SerializedName("revenue") val revenue: Double,
+    @SerializedName("bookingCount") val bookingCount: Long,
     @SerializedName("ticketCount") val ticketCount: Int
 )
 
 data class MovieRevenueResponse(
     @SerializedName("movieId") val movieId: Long,
     @SerializedName("movieTitle") val movieTitle: String,
-    @SerializedName("revenue") val revenue: Double,
-    @SerializedName("ticketCount") val ticketCount: Int
+    @SerializedName("ticketRevenue") val ticketRevenue: Double,
+    @SerializedName("ticketsSold") val ticketsSold: Int,
+    @SerializedName("bookingCount") val bookingCount: Long? = null
 )
 
 data class CinemaRevenueResponse(
     @SerializedName("cinemaId") val cinemaId: Long,
     @SerializedName("cinemaName") val cinemaName: String,
-    @SerializedName("revenue") val revenue: Double,
-    @SerializedName("ticketCount") val ticketCount: Int
+    @SerializedName("ticketRevenue") val ticketRevenue: Double,
+    @SerializedName("ticketsSold") val ticketsSold: Int,
+    @SerializedName("bookingCount") val bookingCount: Long? = null
 )
 
 // Movie Admin Models
@@ -49,6 +56,7 @@ data class UpdateOrCreateMovieRequest(
 data class CreateCinemaRequest(
     @SerializedName("name") val name: String,
     @SerializedName("address") val address: String,
+    @SerializedName("imageUrl") val imageUrl: String? = null,
     @SerializedName("hotline") val hotline: String
 )
 

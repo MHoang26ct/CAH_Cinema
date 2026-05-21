@@ -6,6 +6,7 @@ data class CinemaItem(
     @SerializedName("cinemaId") val id: Long,
     @SerializedName("name") val name: String,
     @SerializedName("address") val address: String,
+    @SerializedName("imageUrl") val imageUrl: String? = null,
     @SerializedName("hotline") val hotline: String
 )
 
@@ -25,6 +26,17 @@ data class MovieShowtimeItem(
     @SerializedName("cinemaName") val cinemaName: String,
     @SerializedName("address") val address: String,
     @SerializedName("showtimes") val showtimes: List<ShowtimeInfo>
+)
+
+data class MovieShowtimesResponse(
+    @SerializedName("movie") val movie: MovieInfoInShowtime,
+    @SerializedName("cinemas") val cinemas: List<MovieShowtimeItem>
+)
+
+data class MovieInfoInShowtime(
+    @SerializedName("movieId") val id: Long,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String? = null
 )
 
 data class MovieInfo(

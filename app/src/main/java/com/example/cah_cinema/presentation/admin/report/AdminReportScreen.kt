@@ -64,8 +64,45 @@ fun AdminReportContent(
                     Spacer(modifier = Modifier.height(16.dp))
                     CinemaRevenueTable(state.cinemaRevenue)
                 }
+
+                // Section: Tổng quan (nếu có)
+                state.businessOverview?.let { overview ->
+                    item {
+                        ReportSectionTitle("Tổng quan kinh doanh")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        BusinessOverviewCard(overview)
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+fun BusinessOverviewCard(overview: com.example.cah_cinema.data.model.BusinessOverviewResponse) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1C1C22), RoundedCornerShape(12.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        OverviewRow("Tổng doanh thu", formatPrice(overview.totalRevenue))
+        OverviewRow("Doanh thu vé", formatPrice(overview.ticketRevenue))
+        OverviewRow("Doanh thu đồ ăn", formatPrice(overview.foodRevenue))
+        OverviewRow("Tổng số vé bán", overview.totalTicketsSold.toString())
+        OverviewRow("Tổng số đơn hàng", overview.totalBookingsPaid.toString())
+        OverviewRow("Tổng giảm giá", formatPrice(overview.totalDiscount))
+        OverviewRow("Giá trị trung bình đơn", formatPrice(overview.averageOrderValue))
+    }
+}
+
+@Composable
+fun OverviewRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
+        Text(value, color = Color.White, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -96,8 +133,8 @@ fun MovieRevenueTable(data: List<MovieRevenueResponse>) {
         data.forEach { item ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Text(item.movieTitle, color = Color.White, modifier = Modifier.weight(3f), style = MaterialTheme.typography.bodyMedium)
-                Text(item.ticketCount.toString(), color = Color.White, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                Text(formatPrice(item.revenue), color = Color.White, modifier = Modifier.weight(2f), style = MaterialTheme.typography.bodyMedium)
+                Text(item.ticketsSold.toString(), color = Color.White, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Text(formatPrice(item.ticketRevenue), color = Color.White, modifier = Modifier.weight(2f), style = MaterialTheme.typography.bodyMedium)
             }
             HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
         }
@@ -121,8 +158,8 @@ fun CinemaRevenueTable(data: List<CinemaRevenueResponse>) {
         data.forEach { item ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Text(item.cinemaName, color = Color.White, modifier = Modifier.weight(3f), style = MaterialTheme.typography.bodyMedium)
-                Text(item.ticketCount.toString(), color = Color.White, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                Text(formatPrice(item.revenue), color = Color.White, modifier = Modifier.weight(2f), style = MaterialTheme.typography.bodyMedium)
+                Text(item.ticketsSold.toString(), color = Color.White, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Text(formatPrice(item.ticketRevenue), color = Color.White, modifier = Modifier.weight(2f), style = MaterialTheme.typography.bodyMedium)
             }
             HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
         }
