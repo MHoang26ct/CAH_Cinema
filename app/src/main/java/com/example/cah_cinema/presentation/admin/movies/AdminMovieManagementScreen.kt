@@ -26,10 +26,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.data.model.Genre
 import com.example.cah_cinema.data.model.MovieDetail
 import com.example.cah_cinema.data.model.MovieListItem
@@ -37,28 +39,35 @@ import com.example.cah_cinema.data.model.UpdateOrCreateMovieRequest
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.ui.theme.CyanBlue
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
 @Composable
-fun AdminMovieManagementScreen(
-    viewModel: AdminMovieViewModel = viewModel()
+fun AdminMovieManagementPreview() {
+    CAH_CinemaTheme {
+        AdminMovieManagementContent(
+            state = AdminMovieState(
+                movies = listOf(
+                    MovieListItem(1, "Avengers: Endgame", 181, "T13", "https://via.placeholder.com/36x52"),
+                    MovieListItem(2, "Spider-Man: No Way Home", 148, "T13", "https://via.placeholder.com/36x52"),
+                    MovieListItem(3, "The Batman", 176, "T16", "https://via.placeholder.com/36x52")
+                ),
+                isLoading = false
+            ),
+            onAddClick = {},
+            onEditMovie = {},
+            onDeleteMovie = {}
+        )
+    }
+}
+
+@Composable
+fun AdminMovieManagementContent(
+    state: AdminMovieState,
+    onAddClick: () -> Unit,
+    onEditMovie: (MovieListItem) -> Unit,
+    onDeleteMovie: (Long) -> Unit,
+    snackbarHostState: SnackbarHostState = SnackbarHostState()
 ) {
-    val state by viewModel.state.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editingMovie by remember { mutableStateOf<MovieListItem?>(null) }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(state.successMessage) {
-        state.successMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearMessages()
-        }
-    }
-    LaunchedEffect(state.errorMessage) {
-        state.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearMessages()
-        }
-    }
-
     AdminScaffold(title = "Quản lý Phim", snackbarHostState = snackbarHostState) { paddingValues ->
         Column(
             modifier = Modifier
@@ -66,7 +75,6 @@ fun AdminMovieManagementScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Header row - fix layout overflow
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -81,7 +89,7 @@ fun AdminMovieManagementScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
-                    onClick = { showAddDialog = true },
+                    onClick = onAddClick,
                     colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
@@ -105,7 +113,6 @@ fun AdminMovieManagementScreen(
                     CircularProgressIndicator(color = CyanBlue)
                 }
             } else {
-                // Header bảng
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -129,11 +136,8 @@ fun AdminMovieManagementScreen(
                     items(state.movies) { movie ->
                         MovieRow(
                             movie = movie,
-                            onEdit = { 
-                                viewModel.loadMovieDetail(movie.id)
-                                editingMovie = movie 
-                            },
-                            onDelete = { viewModel.deleteMovie(movie.id) }
+                            onEdit = { onEditMovie(movie) },
+                            onDelete = { onDeleteMovie(movie.id) }
                         )
                         HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
                     }
@@ -141,6 +145,40 @@ fun AdminMovieManagementScreen(
             }
         }
     }
+}
+
+@Composable
+fun AdminMovieManagementScreen(
+    viewModel: AdminMovieViewModel = viewModel()
+) {
+    val state by viewModel.state.collectAsState()
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingMovie by remember { mutableStateOf<MovieListItem?>(null) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(state.successMessage) {
+        state.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
+    }
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
+    }
+
+    AdminMovieManagementContent(
+        state = state,
+        snackbarHostState = snackbarHostState,
+        onAddClick = { showAddDialog = true },
+        onEditMovie = { movie ->
+            viewModel.loadMovieDetail(movie.id)
+            editingMovie = movie
+        },
+        onDeleteMovie = { viewModel.deleteMovie(it) }
+    )
 
     // Dialog thêm phim
     if (showAddDialog) {

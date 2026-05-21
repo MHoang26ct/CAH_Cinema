@@ -1,10 +1,13 @@
 package com.example.cah_cinema.presentation.admin.cinema
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.model.*
 import com.example.cah_cinema.data.repository.AdminRepositoryImpl
 import com.example.cah_cinema.domain.repository.AdminRepository
+import com.example.cah_cinema.util.CloudinaryUploader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,6 +18,7 @@ data class AdminCinemaState(
     val cinemas: List<CinemaItem> = emptyList(),
     val roomsByCinema: Map<Long, List<RoomItem>> = emptyMap(),
     val isLoading: Boolean = false,
+    val isUploading: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null
 )
@@ -44,6 +48,21 @@ class AdminCinemaViewModel(
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, errorMessage = e.message) }
             }
+        }
+    }
+
+    fun uploadImage(context: Context, uri: Uri, onResult: (String?) -> Unit) {
+        _state.update { it.copy(isUploading = true) }
+        viewModelScope.launch {
+            val result = CloudinaryUploader.uploadImage(context, uri)
+            _state.update { it.copy(isUploading = false) }
+            result.fold(
+                onSuccess = { url -> onResult(url) },
+                onFailure = {
+                    _state.update { s -> s.copy(errorMessage = "Upload ảnh thất bại: ${it.message}") }
+                    onResult(null)
+                }
+            )
         }
     }
 

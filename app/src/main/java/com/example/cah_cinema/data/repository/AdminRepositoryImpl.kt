@@ -145,4 +145,21 @@ class AdminRepositoryImpl : AdminRepository {
 
     override suspend fun deleteFood(id: Long): BaseResponse<Unit>? =
         handle(RetrofitClient.apiService.deleteFood(id))
+
+    // ── Promotions ────────────────────────────────────────────────────────────
+
+    override suspend fun getAdminPromotions(page: Int): BaseResponse<SliceResponse<AdminPromotionItem>>? =
+        handle(RetrofitClient.apiService.getAdminPromotions(page))
+
+    override suspend fun getAdminPromotionDetail(id: Long): BaseResponse<AdminPromotionDetail>? =
+        handle(RetrofitClient.apiService.getAdminPromotionDetail(id))
+
+    override suspend fun createPromotion(request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>? =
+        handle(RetrofitClient.apiService.createPromotion(request))
+
+    override suspend fun updatePromotion(id: Long, request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>? =
+        handle(RetrofitClient.apiService.updatePromotion(id, request))
+
+    override suspend fun deletePromotion(id: Long): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.deletePromotion(id))
 }

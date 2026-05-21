@@ -16,11 +16,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,6 +32,7 @@ import com.example.cah_cinema.data.model.DailyRevenueResponse
 import com.example.cah_cinema.data.model.MovieRevenueResponse
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.presentation.user.booking.formatPrice
+import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
 
 @Composable
@@ -37,74 +40,7 @@ fun AdminReportScreen(
     viewModel: AdminReportViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
-
-    AdminScaffold(title = "Báo cáo doanh thu") { paddingValues ->
-        if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = CyanBlue)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                // Section: Tổng quan
-                state.overview?.let { overview ->
-                    item {
-                        ReportSectionTitle("Tổng quan (30 ngày gần nhất)")
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OverviewCards(overview)
-                    }
-                }
-
-                // Section: Doanh thu theo ngày
-                if (state.dailyRevenue.isNotEmpty()) {
-                    item {
-                        ReportSectionTitle("Doanh thu theo ngày")
-                        Spacer(modifier = Modifier.height(12.dp))
-                        DailyRevenueTable(state.dailyRevenue)
-                    }
-                }
-
-                // Section: Doanh thu theo phim
-                if (state.movieRevenue.isNotEmpty()) {
-                    item {
-                        ReportSectionTitle("Doanh thu theo phim")
-                        Spacer(modifier = Modifier.height(12.dp))
-                        MovieRevenueTable(state.movieRevenue)
-                    }
-                }
-
-                // Section: Doanh thu theo rạp
-                if (state.cinemaRevenue.isNotEmpty()) {
-                    item {
-                        ReportSectionTitle("Doanh thu theo rạp")
-                        Spacer(modifier = Modifier.height(12.dp))
-                        CinemaRevenueTable(state.cinemaRevenue)
-                    }
-                }
-
-                // Empty state
-                if (state.overview == null && state.movieRevenue.isEmpty() && state.cinemaRevenue.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = state.errorMessage ?: "Không có dữ liệu báo cáo",
-                                color = Color.White.copy(alpha = 0.5f),
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
+    AdminReportContent(state = state)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -263,6 +199,102 @@ fun CinemaRevenueTable(data: List<CinemaRevenueResponse>) {
                 Text(formatPrice(item.revenue), color = Color.White, modifier = Modifier.weight(2f), style = MaterialTheme.typography.bodyMedium)
             }
             HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
+@Composable
+fun AdminReportPreview() {
+    CAH_CinemaTheme {
+        AdminReportContent(
+            state = AdminReportState(
+                overview = BusinessOverviewResponse(
+                    totalRevenue = 125_000_000.0,
+                    ticketRevenue = 95_000_000.0,
+                    foodRevenue = 30_000_000.0,
+                    totalTicketsSold = 2100,
+                    totalBookingsPaid = 1850,
+                    activeMovies = 12
+                ),
+                dailyRevenue = listOf(
+                    DailyRevenueResponse("2026-05-19", 4_200_000.0, 93),
+                    DailyRevenueResponse("2026-05-20", 5_800_000.0, 128),
+                    DailyRevenueResponse("2026-05-21", 3_900_000.0, 86)
+                ),
+                movieRevenue = listOf(
+                    MovieRevenueResponse(1, "Avengers: Endgame", 42_000_000.0, 930),
+                    MovieRevenueResponse(2, "Spider-Man: No Way Home", 38_500_000.0, 855)
+                ),
+                cinemaRevenue = listOf(
+                    CinemaRevenueResponse(1, "Cinestar Quốc Thanh", 68_000_000.0, 1510),
+                    CinemaRevenueResponse(2, "Cinestar Hai Bà Trưng", 57_000_000.0, 590)
+                ),
+                isLoading = false
+            )
+        )
+    }
+}
+
+@Composable
+fun AdminReportContent(state: AdminReportState) {
+    AdminScaffold(title = "Báo cáo doanh thu") { paddingValues ->
+        if (state.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = CyanBlue)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                state.overview?.let { overview ->
+                    item {
+                        ReportSectionTitle("Tổng quan (30 ngày gần nhất)")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OverviewCards(overview)
+                    }
+                }
+                if (state.dailyRevenue.isNotEmpty()) {
+                    item {
+                        ReportSectionTitle("Doanh thu theo ngày")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DailyRevenueTable(state.dailyRevenue)
+                    }
+                }
+                if (state.movieRevenue.isNotEmpty()) {
+                    item {
+                        ReportSectionTitle("Doanh thu theo phim")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        MovieRevenueTable(state.movieRevenue)
+                    }
+                }
+                if (state.cinemaRevenue.isNotEmpty()) {
+                    item {
+                        ReportSectionTitle("Doanh thu theo rạp")
+                        Spacer(modifier = Modifier.height(12.dp))
+                        CinemaRevenueTable(state.cinemaRevenue)
+                    }
+                }
+                if (state.overview == null && state.movieRevenue.isEmpty() && state.cinemaRevenue.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = state.errorMessage ?: "Không có dữ liệu báo cáo",
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

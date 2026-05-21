@@ -611,6 +611,7 @@ fun ShowtimeItem(showtime: ShowtimeInfo, onEdit: () -> Unit = {}, onDelete: () -
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
 @Composable
 fun AdminShowtimePreview() {

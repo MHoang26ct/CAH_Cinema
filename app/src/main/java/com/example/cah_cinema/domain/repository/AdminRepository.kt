@@ -56,4 +56,11 @@ interface AdminRepository {
     suspend fun createFood(request: FoodItem): BaseResponse<FoodItem>?
     suspend fun updateFood(id: Long, request: FoodItem): BaseResponse<FoodItem>?
     suspend fun deleteFood(id: Long): BaseResponse<Unit>?
+
+    // Promotions
+    suspend fun getAdminPromotions(page: Int): BaseResponse<SliceResponse<AdminPromotionItem>>?
+    suspend fun getAdminPromotionDetail(id: Long): BaseResponse<AdminPromotionDetail>?
+    suspend fun createPromotion(request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>?
+    suspend fun updatePromotion(id: Long, request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>?
+    suspend fun deletePromotion(id: Long): BaseResponse<Unit>?
 }

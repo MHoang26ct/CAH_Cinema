@@ -25,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,6 +34,7 @@ import com.example.cah_cinema.data.model.FoodItem
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.presentation.admin.movies.AdminTextField
 import com.example.cah_cinema.presentation.user.booking.formatPrice
+import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
 
 @Composable
@@ -57,73 +59,13 @@ fun AdminFoodManagementScreen(
         }
     }
 
-    AdminScaffold(title = "Quản lý Đồ ăn & Thức uống", snackbarHostState = snackbarHostState) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Danh sách (${state.foods.size})",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Button(
-                    onClick = { showAddDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("THÊM MÓN", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (state.isLoading && state.foods.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = CyanBlue)
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFF1C1C22), RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
-                ) {
-                    Text("MÓN ĂN / NƯỚC UỐNG", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(3f), style = MaterialTheme.typography.labelMedium)
-                    Text("PHÂN LOẠI", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium)
-                    Text("GIÁ TIỀN", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium)
-                    Text("THAO TÁC", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium)
-                }
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
-                        .background(Color(0xFF1C1C22).copy(alpha = 0.5f))
-                ) {
-                    items(state.foods) { food ->
-                        FoodRow(
-                            food = food,
-                            onEdit = { editingFood = food },
-                            onDelete = { viewModel.deleteFood(food.id) }
-                        )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
-                    }
-                }
-            }
-        }
-    }
+    AdminFoodManagementContent(
+        state = state,
+        snackbarHostState = snackbarHostState,
+        onAddClick = { showAddDialog = true },
+        onEditFood = { food -> editingFood = food },
+        onDeleteFood = { viewModel.deleteFood(it) }
+    )
 
     if (showAddDialog) {
         FoodFormDialog(
@@ -279,5 +221,103 @@ fun FoodRow(food: FoodItem, onEdit: () -> Unit, onDelete: () -> Unit) {
             IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = null, tint = CyanBlue.copy(alpha = 0.8f), modifier = Modifier.size(20.dp)) }
             IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(20.dp)) }
         }
+    }
+}
+
+@Composable
+fun AdminFoodManagementContent(
+    state: AdminFoodState,
+    onAddClick: () -> Unit,
+    onEditFood: (FoodItem) -> Unit,
+    onDeleteFood: (Long) -> Unit,
+    snackbarHostState: SnackbarHostState = SnackbarHostState()
+) {
+    AdminScaffold(title = "Quản lý Đồ ăn & Thức uống", snackbarHostState = snackbarHostState) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Danh sách (${state.foods.size})",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Button(
+                    onClick = onAddClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("THÊM MÓN", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (state.isLoading && state.foods.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = CyanBlue)
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF1C1C22), RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text("MÓN ĂN / NƯỚC UỐNG", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(3f), style = MaterialTheme.typography.labelMedium)
+                    Text("PHÂN LOẠI", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium)
+                    Text("GIÁ TIỀN", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium)
+                    Text("THAO TÁC", color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium)
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
+                        .background(Color(0xFF1C1C22).copy(alpha = 0.5f))
+                ) {
+                    items(state.foods) { food ->
+                        FoodRow(
+                            food = food,
+                            onEdit = { onEditFood(food) },
+                            onDelete = { onDeleteFood(food.id) }
+                        )
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
+@Composable
+fun AdminFoodManagementPreview() {
+    CAH_CinemaTheme {
+        AdminFoodManagementContent(
+            state = AdminFoodState(
+                foods = listOf(
+                    FoodItem(1, "Bắp rang bơ lớn", "Bắp rang bơ size L", 45000.0, "Food", ""),
+                    FoodItem(2, "Coca Cola", "Nước ngọt có ga 500ml", 30000.0, "Drink", ""),
+                    FoodItem(3, "Combo đôi", "2 bắp + 2 nước", 120000.0, "Combo", "")
+                ),
+                isLoading = false
+            ),
+            onAddClick = {},
+            onEditFood = {},
+            onDeleteFood = {}
+        )
     }
 }

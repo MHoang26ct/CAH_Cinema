@@ -21,10 +21,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
 
 // ─── Màu sắc loại ghế ───────────────────────────────────────────────────────
@@ -628,4 +630,179 @@ fun ConfigTextField(
             unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
         )
     )
+}
+
+// ─── Preview helpers ─────────────────────────────────────────────────────────
+
+private fun buildPreviewCells(
+    seatRows: Int = 6,
+    seatCols: Int = 8,
+    aisleAfterRows: Set<Int> = setOf(3),
+    aisleAfterCols: Set<Int> = setOf(4)
+): Map<Pair<Int, Int>, GridCell> {
+    val cells = mutableMapOf<Pair<Int, Int>, GridCell>()
+    fun buildCoordMap(count: Int, aisleAfter: Set<Int>): Map<Int, Double> {
+        val map = mutableMapOf<Int, Double>()
+        var gi = 0; var si = 1
+        while (si <= count) {
+            map[gi] = si.toDouble(); gi++
+            if (aisleAfter.contains(si) && si < count) { map[gi] = si + 0.5; gi++ }
+            si++
+        }
+        return map
+    }
+    val rowMap = buildCoordMap(seatRows, aisleAfterRows)
+    val colMap = buildCoordMap(seatCols, aisleAfterCols)
+    val totalRows = seatRows + aisleAfterRows.size
+    val totalCols = seatCols + aisleAfterCols.size
+    for (gr in 0 until totalRows) {
+        for (gc in 0 until totalCols) {
+            val br = rowMap[gr] ?: continue
+            val bc = colMap[gc] ?: continue
+            val typeId = when {
+                br % 1.0 != 0.0 || bc % 1.0 != 0.0 -> TYPE_EMPTY
+                br.toInt() == 1 -> TYPE_VIP
+                br.toInt() == 2 && bc.toInt() in 1..2 -> TYPE_COUPLE
+                else -> TYPE_REGULAR
+            }
+            cells[gr to gc] = GridCell(gr, gc, br, bc, typeId)
+        }
+    }
+    return cells
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminSeatManagementContent(
+    state: AdminSeatMapState,
+    selectedTypeId: Long,
+    onTypeSelected: (Long) -> Unit,
+    onCellClick: (Int, Int) -> Unit,
+    onSave: () -> Unit,
+    onClearAll: () -> Unit,
+    onBack: () -> Unit,
+    onShowConfig: () -> Unit,
+    totalGridRows: Int,
+    totalGridCols: Int
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        containerColor = Color(0xFF13131A),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "THIẾT KẾ SƠ ĐỒ GHẾ",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onShowConfig) {
+                        Icon(Icons.Default.Settings, contentDescription = "Cấu hình", tint = Color.White.copy(alpha = 0.7f))
+                    }
+                    IconButton(onClick = onClearAll) {
+                        Icon(Icons.Default.Delete, contentDescription = "Xóa tất cả", tint = Color.Red.copy(alpha = 0.7f))
+                    }
+                    Button(
+                        onClick = onSave,
+                        colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = !state.isSaving,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        if (state.isSaving) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("LƯU", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1C1C22))
+            )
+        }
+    ) { paddingValues ->
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            SeatTypeSelectorBar(selectedTypeId = selectedTypeId, onTypeSelected = onTypeSelected)
+            SeatCountSummary(cells = state.cells.values.toList())
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .height(6.dp)
+                    .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(3.dp))
+            )
+            Text(
+                "MÀN HÌNH",
+                color = Color.White.copy(alpha = 0.3f),
+                fontSize = 10.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp)
+            ) {
+                val hScroll = rememberScrollState()
+                val vScroll = rememberScrollState()
+                Column(
+                    modifier = Modifier.fillMaxSize().verticalScroll(vScroll).horizontalScroll(hScroll)
+                ) {
+                    SeatGridColHeader(totalGridCols = totalGridCols, cells = state.cells, seatCols = state.seatCols)
+                    for (gr in 0 until totalGridRows) {
+                        SeatGridRow(
+                            gridRow = gr,
+                            totalGridCols = totalGridCols,
+                            cells = state.cells,
+                            selectedTypeId = selectedTypeId,
+                            seatRows = state.seatRows,
+                            onCellClick = { gc -> onCellClick(gr, gc) }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+            SeatLegendBar()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
+@Composable
+fun AdminSeatManagementPreview() {
+    CAH_CinemaTheme {
+        val previewState = AdminSeatMapState(
+            roomId = 1L,
+            cells = buildPreviewCells(),
+            seatRows = 6,
+            seatCols = 8,
+            aisleAfterRows = setOf(3),
+            aisleAfterCols = setOf(4),
+            isLoading = false
+        )
+        AdminSeatManagementContent(
+            state = previewState,
+            selectedTypeId = TYPE_REGULAR,
+            onTypeSelected = {},
+            onCellClick = { _, _ -> },
+            onSave = {},
+            onClearAll = {},
+            onBack = {},
+            onShowConfig = {},
+            totalGridRows = 7,
+            totalGridCols = 9
+        )
+    }
 }

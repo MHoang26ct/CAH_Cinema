@@ -248,4 +248,23 @@ interface ApiService {
 
     @DELETE("api/v1/admin/food/{id}")
     suspend fun deleteFood(@Path("id") id: Long): Response<BaseResponse<Unit>>
+
+    // Admin Promotions
+    @GET("api/v1/admin/promotions")
+    suspend fun getAdminPromotions(@Query("page") page: Int = 0): Response<BaseResponse<SliceResponse<AdminPromotionItem>>>
+
+    @GET("api/v1/admin/promotions/{id}")
+    suspend fun getAdminPromotionDetail(@Path("id") id: Long): Response<BaseResponse<AdminPromotionDetail>>
+
+    @POST("api/v1/admin/promotions")
+    suspend fun createPromotion(@Body request: CreateOrUpdatePromotionRequest): Response<BaseResponse<AdminPromotionDetail>>
+
+    @PUT("api/v1/admin/promotions/{id}")
+    suspend fun updatePromotion(
+        @Path("id") id: Long,
+        @Body request: CreateOrUpdatePromotionRequest
+    ): Response<BaseResponse<AdminPromotionDetail>>
+
+    @DELETE("api/v1/admin/promotions/{id}")
+    suspend fun deletePromotion(@Path("id") id: Long): Response<BaseResponse<Unit>>
 }

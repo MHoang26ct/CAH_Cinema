@@ -133,3 +133,37 @@ data class Holiday(
 data class DeleteHolidayRequest(
     @SerializedName("holidayId") val holidayId: Long
 )
+
+// Promotion Admin Models
+data class AdminPromotionItem(
+    @SerializedName("id") val id: Long,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String?,
+    @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("startAt") val startAt: String?,
+    @SerializedName("expiredAt") val expiredAt: String?,
+    @SerializedName("isActive") val isActive: Boolean
+)
+
+data class AdminPromotionDetail(
+    @SerializedName("id") val id: Long,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String?,
+    @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("conditions") val conditions: String?, // JSON array string
+    @SerializedName("notes") val notes: String?, // JSON array string
+    @SerializedName("startAt") val startAt: String?,
+    @SerializedName("expiredAt") val expiredAt: String?,
+    @SerializedName("isActive") val isActive: Boolean
+)
+
+data class CreateOrUpdatePromotionRequest(
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String?,
+    @SerializedName("imageUrl") val imageUrl: String?,
+    @SerializedName("conditions") val conditions: List<String>?,
+    @SerializedName("notes") val notes: List<String>?,
+    @SerializedName("startAt") val startAt: String?, // yyyy-MM-dd
+    @SerializedName("expiredAt") val expiredAt: String?, // yyyy-MM-dd
+    @SerializedName("isActive") val isActive: Boolean = true
+)

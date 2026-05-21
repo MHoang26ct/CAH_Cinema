@@ -1,22 +1,27 @@
 package com.example.cah_cinema.presentation.admin.cinema
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -37,6 +42,7 @@ fun AdminCinemaManagementScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingCinema by remember { mutableStateOf<CinemaItem?>(null) }
     var showAddRoomDialog by remember { mutableStateOf<Long?>(null) } // CinemaId
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -59,17 +65,36 @@ fun AdminCinemaManagementScreen(
         onNavigate = onNavigate,
         onDeleteCinema = { viewModel.deleteCinema(it) },
         onAddClick = { showAddDialog = true },
+        onEditClick = { editingCinema = it },
         onAddRoomClick = { showAddRoomDialog = it },
         onDeleteRoom = { roomId, cinemaId -> viewModel.deleteRoom(roomId, cinemaId) },
         onManageSeats = { roomId -> onNavigate(Screen.AdminSeatManagement.createRoute(roomId)) }
     )
 
     if (showAddDialog) {
-        AddCinemaDialog(
+        CinemaFormDialog(
+            title = "Thêm rạp mới",
+            isUploading = state.isUploading,
             onDismiss = { showAddDialog = false },
+            onUploadImage = { context, uri, callback -> viewModel.uploadImage(context, uri, callback) },
             onConfirm = { name, address, hotline, imageUrl ->
                 viewModel.createCinema(name, address, hotline, imageUrl) {
                     showAddDialog = false
+                }
+            }
+        )
+    }
+
+    editingCinema?.let { cinema ->
+        CinemaFormDialog(
+            title = "Sửa thông tin rạp",
+            initialData = cinema,
+            isUploading = state.isUploading,
+            onDismiss = { editingCinema = null },
+            onUploadImage = { context, uri, callback -> viewModel.uploadImage(context, uri, callback) },
+            onConfirm = { name, address, hotline, imageUrl ->
+                viewModel.updateCinema(cinema.id, name, address, hotline, imageUrl) {
+                    editingCinema = null
                 }
             }
         )
@@ -94,6 +119,7 @@ fun AdminCinemaManagementContent(
     onNavigate: (String) -> Unit,
     onDeleteCinema: (Long) -> Unit,
     onAddClick: () -> Unit,
+    onEditClick: (CinemaItem) -> Unit,
     onAddRoomClick: (Long) -> Unit,
     onDeleteRoom: (Long, Long) -> Unit = { _, _ -> },
     onManageSeats: (Long) -> Unit
@@ -106,7 +132,7 @@ fun AdminCinemaManagementContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(24.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -141,12 +167,14 @@ fun AdminCinemaManagementContent(
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     items(state.cinemas) { cinema ->
                         CinemaCard(
                             cinema = cinema, 
                             rooms = state.roomsByCinema[cinema.id] ?: emptyList(),
+                            onEdit = { onEditClick(cinema) },
                             onDelete = { onDeleteCinema(cinema.id) },
                             onAddRoom = { onAddRoomClick(cinema.id) },
                             onDeleteRoom = { roomId -> onDeleteRoom(roomId, cinema.id) },
@@ -204,20 +232,32 @@ fun AddRoomDialog(
 }
 
 @Composable
-fun AddCinemaDialog(
+fun CinemaFormDialog(
+    title: String,
+    initialData: CinemaItem? = null,
+    isUploading: Boolean,
     onDismiss: () -> Unit,
+    onUploadImage: (android.content.Context, Uri, (String?) -> Unit) -> Unit,
     onConfirm: (String, String, String, String?) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    var hotline by remember { mutableStateOf("") }
-    var imageUrl by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialData?.name ?: "") }
+    var address by remember { mutableStateOf(initialData?.address ?: "") }
+    var hotline by remember { mutableStateOf(initialData?.hotline ?: "") }
+    var imageUrl by remember { mutableStateOf(initialData?.imageUrl ?: "") }
+    
+    val context = LocalContext.current
+    val imageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { onUploadImage(context, it) { url -> if (url != null) imageUrl = url } }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Thêm rạp mới", color = Color.White) },
+        title = { Text(title, color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(
                     value = name, 
                     onValueChange = { name = it }, 
@@ -260,32 +300,49 @@ fun AddCinemaDialog(
                         unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
                     )
                 )
-                OutlinedTextField(
-                    value = imageUrl,
-                    onValueChange = { imageUrl = it },
-                    label = { Text("URL ảnh rạp (tuỳ chọn)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                
+                Text("Hình ảnh rạp", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = imageUrl,
+                        onValueChange = { imageUrl = it },
+                        label = { Text("URL Hình ảnh") },
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = CyanBlue,
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                            focusedBorderColor = CyanBlue,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                        )
                     )
-                )
+                    IconButton(onClick = { imageLauncher.launch("image/*") }, enabled = !isUploading) {
+                        if (isUploading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = CyanBlue, strokeWidth = 2.dp)
+                        else Icon(Icons.Default.Image, contentDescription = "Chọn ảnh", tint = CyanBlue)
+                    }
+                }
+                if (imageUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = imageUrl, 
+                        contentDescription = null, 
+                        modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(8.dp)), 
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = { onConfirm(name, address, hotline, imageUrl.ifBlank { null }) },
-                colors = ButtonDefaults.buttonColors(containerColor = CyanBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
+                enabled = name.isNotBlank() && address.isNotBlank() && !isUploading
             ) {
-                Text("XÁC NHẬN", color = Color.Black)
+                Text("XÁC NHẬN", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("HỦY") }
+            TextButton(onClick = onDismiss) { Text("HỦY", color = Color.White.copy(alpha = 0.6f)) }
         },
         containerColor = Color(0xFF21212B)
     )
@@ -295,6 +352,7 @@ fun AddCinemaDialog(
 fun CinemaCard(
     cinema: CinemaItem, 
     rooms: List<RoomItem>,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
     onAddRoom: () -> Unit,
     onDeleteRoom: (Long) -> Unit = {},
@@ -337,8 +395,8 @@ fun CinemaCard(
                     Text(cinema.address, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconButton(onClick = { /* Edit */ }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.4f))
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = CyanBlue.copy(alpha = 0.7f))
                     }
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.6f))
@@ -397,6 +455,7 @@ fun CinemaCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
 @Composable
 fun AdminCinemaManagementPreview() {
@@ -412,6 +471,7 @@ fun AdminCinemaManagementPreview() {
             onNavigate = {},
             onDeleteCinema = {},
             onAddClick = {},
+            onEditClick = {},
             onAddRoomClick = {},
             onDeleteRoom = { _, _ -> },
             onManageSeats = {}

@@ -18,12 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.data.model.BusinessOverviewResponse
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.presentation.admin.components.AdminStatCard
 import com.example.cah_cinema.presentation.user.booking.formatPrice
+import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 
 @Composable
 fun AdminDashboardScreen(
@@ -31,6 +33,27 @@ fun AdminDashboardScreen(
 ) {
     val state by viewModel.state.collectAsState()
     AdminDashboardContent(state = state)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
+@Composable
+fun AdminDashboardPreview() {
+    CAH_CinemaTheme {
+        AdminDashboardContent(
+            state = AdminDashboardState(
+                overview = BusinessOverviewResponse(
+                    totalRevenue = 125_000_000.0,
+                    ticketRevenue = 95_000_000.0,
+                    foodRevenue = 30_000_000.0,
+                    totalTicketsSold = 2100,
+                    totalBookingsPaid = 1850,
+                    activeMovies = 12
+                ),
+                isLoading = false
+            )
+        )
+    }
 }
 
 @Composable

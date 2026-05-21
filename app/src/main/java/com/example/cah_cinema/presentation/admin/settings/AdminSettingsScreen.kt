@@ -17,12 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.data.model.Holiday
 import com.example.cah_cinema.data.model.PriceConfig
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
+import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
 
 @Composable
@@ -316,5 +318,32 @@ fun HolidayList(holidays: List<Holiday>, onDelete: (Long) -> Unit) {
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
+@Composable
+fun AdminSettingsPreview() {
+    CAH_CinemaTheme {
+        AdminSettingsContent(
+            state = AdminSettingsState(
+                priceConfigs = listOf(
+                    PriceConfig(id = 1, multiplier = 1.0, dayType = "WEEKDAY", timeSlot = "MORNING", movieFormat = "2D"),
+                    PriceConfig(id = 2, multiplier = 1.2, dayType = "WEEKDAY", timeSlot = "EVENING", movieFormat = "2D"),
+                    PriceConfig(id = 3, multiplier = 1.5, dayType = "WEEKEND", timeSlot = "EVENING", movieFormat = "3D"),
+                    PriceConfig(id = 4, multiplier = 2.0, dayType = "HOLIDAY", timeSlot = "EVENING", movieFormat = "IMAX")
+                ),
+                holidays = listOf(
+                    Holiday(id = 1, date = "2026-01-01", name = "Tết Dương lịch", isRecurring = true),
+                    Holiday(id = 2, date = "2026-04-30", name = "Ngày Giải phóng miền Nam", isRecurring = true),
+                    Holiday(id = 3, date = "2026-09-02", name = "Quốc khánh", isRecurring = true)
+                ),
+                isLoading = false
+            ),
+            snackbarHostState = SnackbarHostState(),
+            onDeleteHoliday = {},
+            onAddHolidayClick = {}
+        )
     }
 }

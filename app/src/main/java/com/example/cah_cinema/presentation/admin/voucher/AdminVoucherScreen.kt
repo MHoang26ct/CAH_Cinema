@@ -425,6 +425,7 @@ fun VoucherCard(voucher: VoucherItem, onEdit: () -> Unit = {}, onDelete: () -> U
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
 @Composable
 fun AdminVoucherPreview() {

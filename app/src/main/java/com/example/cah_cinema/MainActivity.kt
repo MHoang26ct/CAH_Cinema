@@ -54,6 +54,7 @@ import com.example.cah_cinema.presentation.navigation.Screen
 import com.example.cah_cinema.presentation.user.booking.VoucherScreen
 import com.example.cah_cinema.presentation.admin.dashboard.AdminDashboardScreen
 import com.example.cah_cinema.presentation.admin.movies.AdminMovieManagementScreen
+import com.example.cah_cinema.presentation.admin.promotion.AdminPromotionManagementScreen
 import com.example.cah_cinema.presentation.admin.cinema.AdminCinemaManagementScreen
 import com.example.cah_cinema.presentation.admin.voucher.AdminVoucherScreen
 import com.example.cah_cinema.presentation.admin.showtime.AdminShowtimeScreen
@@ -124,11 +125,12 @@ class MainActivity : ComponentActivity() {
                             Screen.AdminDashboard.route to 10,
                             Screen.AdminMovieManagement.route to 11,
                             Screen.AdminCinemaManagement.route to 12,
-                            Screen.AdminShowtimeManagement.route to 13,
-                            Screen.AdminFoodManagement.route to 14,
-                            Screen.AdminVoucherManagement.route to 15,
-                            Screen.AdminReport.route to 16,
-                            Screen.AdminSettings.route to 17
+                            Screen.AdminPromotionManagement.route to 13,
+                            Screen.AdminShowtimeManagement.route to 14,
+                            Screen.AdminFoodManagement.route to 15,
+                            Screen.AdminVoucherManagement.route to 16,
+                            Screen.AdminReport.route to 17,
+                            Screen.AdminSettings.route to 18
                         )
 
                         val isSidebarExpanded = remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -541,6 +543,7 @@ class MainActivity : ComponentActivity() {
                                     composable(Screen.AdminDashboard.route) { AdminDashboardScreen() }
                                     composable(Screen.AdminMovieManagement.route) { AdminMovieManagementScreen() }
                                     composable(Screen.AdminCinemaManagement.route) { AdminCinemaManagementScreen(onNavigate = { route -> navController.navigate(route) }) }
+                                    composable(Screen.AdminPromotionManagement.route) { AdminPromotionManagementScreen() }
                                     composable(Screen.AdminVoucherManagement.route) { AdminVoucherScreen() }
                                     composable(Screen.AdminShowtimeManagement.route) { AdminShowtimeScreen(onNavigate = { route -> navController.navigate(route) }) }
                                     composable(Screen.AdminFoodManagement.route) { 

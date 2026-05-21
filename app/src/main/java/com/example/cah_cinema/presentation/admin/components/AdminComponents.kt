@@ -132,6 +132,7 @@ fun AdminSidebar(
             SidebarItem("Quản lý Rạp", "admin_cinemas", Icons.Default.Business),
             SidebarItem("Lịch chiếu", "admin_showtimes", Icons.Default.AccessTime),
             SidebarItem("Đồ ăn & Nước", "admin_food", Icons.Default.Restaurant),
+            SidebarItem("Khuyến mãi", "admin_promotions", Icons.Default.Campaign),
             SidebarItem("Voucher", "admin_vouchers", Icons.Default.ConfirmationNumber),
             SidebarItem("Báo cáo", "admin_reports", Icons.Default.BarChart),
             SidebarItem("Cài đặt hệ thống", "admin_settings", Icons.Default.Settings)

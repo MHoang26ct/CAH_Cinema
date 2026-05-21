@@ -1,5 +1,9 @@
 package com.example.cah_cinema.presentation.user.auth.login
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -39,6 +43,15 @@ fun LoginScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    fun findActivity(context: Context): Activity? {
+        var currentContext = context
+        while (currentContext is ContextWrapper) {
+            if (currentContext is Activity) return currentContext
+            currentContext = currentContext.baseContext
+        }
+        return null
+    }
 
     Column(
         modifier = Modifier
@@ -174,20 +187,34 @@ fun LoginScreen(
 
                 scope.launch {
                     try {
-                        val result = credentialManager.getCredential(context = context, request = request)
+                        Log.d("LoginScreen", "Starting Google Login with Client ID: ${BuildConfig.GOOGLE_WEB_CLIENT_ID}")
+                        val activity = findActivity(context)
+                        if (activity == null) {
+                            viewModel.errorMessage = "Không tìm thấy Activity context"
+                            return@launch
+                        }
+                        
+                        val result = credentialManager.getCredential(context = activity, request = request)
                         val credential = result.credential
                         
+                        Log.d("LoginScreen", "Got credential type: ${credential.type}")
+
                         if (credential is CustomCredential && 
                             credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                            Log.d("LoginScreen", "ID Token obtained: ${googleIdTokenCredential.idToken.take(10)}...")
                             viewModel.loginWithGoogle(googleIdTokenCredential.idToken, onLoginSuccess)
+                        } else {
+                            Log.e("LoginScreen", "Unexpected credential type: ${credential.type}")
+                            viewModel.errorMessage = "Kiểu xác thực không mong muốn: ${credential.type}"
                         }
                     } catch (e: GetCredentialCancellationException) {
-                        // User tự đóng dialog — không hiển thị lỗi
+                        Log.w("LoginScreen", "User cancelled Google Login")
                     } catch (e: NoCredentialException) {
-                        // Không có tài khoản Google nào trên thiết bị
+                        Log.e("LoginScreen", "No Google accounts found: ${e.message}")
                         viewModel.errorMessage = "Không tìm thấy tài khoản Google trên thiết bị"
                     } catch (e: Exception) {
+                        Log.e("LoginScreen", "Google Login Exception", e)
                         viewModel.errorMessage = "Đăng nhập Google thất bại: ${e.localizedMessage}"
                     }
                 }
