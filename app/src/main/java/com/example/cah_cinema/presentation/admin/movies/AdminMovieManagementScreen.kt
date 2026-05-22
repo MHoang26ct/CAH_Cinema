@@ -37,6 +37,7 @@ import com.example.cah_cinema.data.model.MovieDetail
 import com.example.cah_cinema.data.model.MovieListItem
 import com.example.cah_cinema.data.model.UpdateOrCreateMovieRequest
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
+import com.example.cah_cinema.presentation.admin.components.AdminTextField
 import com.example.cah_cinema.ui.theme.CyanBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -519,31 +520,6 @@ fun MovieFormDialog(
             }
         },
         containerColor = Color(0xFF21212B)
-    )
-}
-
-@Composable
-fun AdminTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    singleLine: Boolean = true
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        modifier = modifier.fillMaxWidth(),
-        singleLine = singleLine,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            focusedLabelColor = CyanBlue,
-            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-            focusedBorderColor = CyanBlue,
-            unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
-        )
     )
 }
 

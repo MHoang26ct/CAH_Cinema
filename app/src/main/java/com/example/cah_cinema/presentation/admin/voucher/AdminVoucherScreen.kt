@@ -27,6 +27,7 @@ import com.example.cah_cinema.data.model.CreateVoucherRequest
 import com.example.cah_cinema.data.model.UpdateVoucherRequest
 import com.example.cah_cinema.data.model.VoucherItem
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
+import com.example.cah_cinema.presentation.admin.components.AdminTextField
 import com.example.cah_cinema.presentation.user.booking.formatPrice
 import com.example.cah_cinema.util.DateTimeUtils
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
@@ -183,7 +184,7 @@ fun EditVoucherDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Mã voucher") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                AdminTextField(value = code, onValueChange = { code = it }, label = "Mã voucher")
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = (type == "FIXED_AMOUNT"), onClick = { type = "FIXED_AMOUNT" })
@@ -193,24 +194,24 @@ fun EditVoucherDialog(
                     Text("Phần trăm", color = Color.White, fontSize = 12.sp)
                 }
 
-                OutlinedTextField(value = value, onValueChange = { value = it }, label = { Text("Giá trị") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                AdminTextField(value = value, onValueChange = { value = it }, label = "Giá trị")
                 
                 Text("Ngày bắt đầu", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = startDay, onValueChange = { startDay = it }, label = { Text("Ngày") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = startMonth, onValueChange = { startMonth = it }, label = { Text("Tháng") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = startYear, onValueChange = { startYear = it }, label = { Text("Năm") }, modifier = Modifier.weight(1.5f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                    AdminTextField(value = startDay, onValueChange = { startDay = it }, label = "Ngày", modifier = Modifier.weight(1f))
+                    AdminTextField(value = startMonth, onValueChange = { startMonth = it }, label = "Tháng", modifier = Modifier.weight(1f))
+                    AdminTextField(value = startYear, onValueChange = { startYear = it }, label = "Năm", modifier = Modifier.weight(1.5f))
                 }
 
                 Text("Ngày hết hạn", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = endDay, onValueChange = { endDay = it }, label = { Text("Ngày") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = endMonth, onValueChange = { endMonth = it }, label = { Text("Tháng") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = endYear, onValueChange = { endYear = it }, label = { Text("Năm") }, modifier = Modifier.weight(1.5f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                    AdminTextField(value = endDay, onValueChange = { endDay = it }, label = "Ngày", modifier = Modifier.weight(1f))
+                    AdminTextField(value = endMonth, onValueChange = { endMonth = it }, label = "Tháng", modifier = Modifier.weight(1f))
+                    AdminTextField(value = endYear, onValueChange = { endYear = it }, label = "Năm", modifier = Modifier.weight(1.5f))
                 }
 
-                OutlinedTextField(value = quantity, onValueChange = { quantity = it }, label = { Text("Số lượng") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                OutlinedTextField(value = minOrderValue, onValueChange = { minOrderValue = it }, label = { Text("Đơn hàng tối thiểu") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                AdminTextField(value = quantity, onValueChange = { quantity = it }, label = "Số lượng")
+                AdminTextField(value = minOrderValue, onValueChange = { minOrderValue = it }, label = "Đơn hàng tối thiểu")
             }
         },
         confirmButton = {
@@ -273,20 +274,7 @@ fun AddVoucherDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = code, 
-                    onValueChange = { code = it }, 
-                    label = { Text("Mã voucher") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
+                AdminTextField(value = code, onValueChange = { code = it }, label = "Mã voucher")
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = (type == "FIXED_AMOUNT"), onClick = { type = "FIXED_AMOUNT" })
@@ -296,63 +284,24 @@ fun AddVoucherDialog(
                     Text("Phần trăm", color = Color.White, fontSize = 12.sp)
                 }
 
-                OutlinedTextField(
-                    value = value, 
-                    onValueChange = { value = it }, 
-                    label = { Text("Giá trị") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
+                AdminTextField(value = value, onValueChange = { value = it }, label = "Giá trị")
                 
                 Text("Ngày bắt đầu", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = startDay, onValueChange = { if(it.length <= 2) startDay = it }, label = { Text("Ngày") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = startMonth, onValueChange = { if(it.length <= 2) startMonth = it }, label = { Text("Tháng") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = startYear, onValueChange = { if(it.length <= 4) startYear = it }, label = { Text("Năm") }, modifier = Modifier.weight(1.5f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                    AdminTextField(value = startDay, onValueChange = { if(it.length <= 2) startDay = it }, label = "Ngày", modifier = Modifier.weight(1f))
+                    AdminTextField(value = startMonth, onValueChange = { if(it.length <= 2) startMonth = it }, label = "Tháng", modifier = Modifier.weight(1f))
+                    AdminTextField(value = startYear, onValueChange = { if(it.length <= 4) startYear = it }, label = "Năm", modifier = Modifier.weight(1.5f))
                 }
 
                 Text("Ngày hết hạn", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = endDay, onValueChange = { if(it.length <= 2) endDay = it }, label = { Text("Ngày") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = endMonth, onValueChange = { if(it.length <= 2) endMonth = it }, label = { Text("Tháng") }, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
-                    OutlinedTextField(value = endYear, onValueChange = { if(it.length <= 4) endYear = it }, label = { Text("Năm") }, modifier = Modifier.weight(1.5f), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                    AdminTextField(value = endDay, onValueChange = { if(it.length <= 2) endDay = it }, label = "Ngày", modifier = Modifier.weight(1f))
+                    AdminTextField(value = endMonth, onValueChange = { if(it.length <= 2) endMonth = it }, label = "Tháng", modifier = Modifier.weight(1f))
+                    AdminTextField(value = endYear, onValueChange = { if(it.length <= 4) endYear = it }, label = "Năm", modifier = Modifier.weight(1.5f))
                 }
 
-                OutlinedTextField(
-                    value = quantity, 
-                    onValueChange = { quantity = it }, 
-                    label = { Text("Số lượng") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
-                OutlinedTextField(
-                    value = minOrderValue, 
-                    onValueChange = { minOrderValue = it }, 
-                    label = { Text("Đơn hàng tối thiểu") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
+                AdminTextField(value = quantity, onValueChange = { quantity = it }, label = "Số lượng")
+                AdminTextField(value = minOrderValue, onValueChange = { minOrderValue = it }, label = "Đơn hàng tối thiểu")
             }
         },
         confirmButton = {

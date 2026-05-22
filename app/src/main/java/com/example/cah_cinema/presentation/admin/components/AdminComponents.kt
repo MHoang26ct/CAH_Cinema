@@ -252,3 +252,37 @@ fun AdminStatCard(
         }
     }
 }
+
+/**
+ * Common Admin TextField with predefined styles.
+ */
+@Composable
+fun AdminTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    enabled: Boolean = true,
+    trailingIcon: @Composable (() -> Unit)? = null
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier.fillMaxWidth(),
+        singleLine = singleLine,
+        enabled = enabled,
+        trailingIcon = trailingIcon,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            disabledTextColor = Color.White.copy(alpha = 0.5f),
+            focusedLabelColor = CyanBlue,
+            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+            focusedBorderColor = CyanBlue,
+            unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+            disabledBorderColor = Color.White.copy(alpha = 0.05f)
+        )
+    )
+}

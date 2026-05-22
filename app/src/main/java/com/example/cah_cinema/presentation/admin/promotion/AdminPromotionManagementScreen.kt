@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,8 +31,9 @@ import com.example.cah_cinema.data.model.AdminPromotionDetail
 import com.example.cah_cinema.data.model.AdminPromotionItem
 import com.example.cah_cinema.data.model.CreateOrUpdatePromotionRequest
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
-import com.example.cah_cinema.ui.theme.CyanBlue
-import com.example.cah_cinema.ui.theme.TextGray
+import com.example.cah_cinema.presentation.admin.components.AdminTextField
+import com.example.cah_cinema.presentation.admin.promotion.AdminPromotionState
+import com.example.cah_cinema.ui.theme.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -40,6 +42,31 @@ fun AdminPromotionManagementScreen(
     viewModel: AdminPromotionViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    AdminPromotionManagementContent(
+        state = state,
+        onAddClick = { viewModel.loadPromotions() /* or other action if needed */ },
+        onEdit = { viewModel.loadPromotionDetail(it.id) },
+        onDelete = { viewModel.deletePromotion(it) },
+        onUploadImage = { context, uri, callback -> viewModel.uploadImage(context, uri, callback) },
+        onConfirmAdd = { request -> viewModel.createPromotion(request) {} },
+        onConfirmUpdate = { id, request -> viewModel.updatePromotion(id, request) {} },
+        onClearDetail = { viewModel.clearEditingDetail() },
+        onClearMessages = { viewModel.clearMessages() }
+    )
+}
+
+@Composable
+fun AdminPromotionManagementContent(
+    state: AdminPromotionState,
+    onAddClick: () -> Unit,
+    onEdit: (AdminPromotionItem) -> Unit,
+    onDelete: (Long) -> Unit,
+    onUploadImage: (android.content.Context, Uri, (String?) -> Unit) -> Unit,
+    onConfirmAdd: (CreateOrUpdatePromotionRequest) -> Unit,
+    onConfirmUpdate: (Long, CreateOrUpdatePromotionRequest) -> Unit,
+    onClearDetail: () -> Unit,
+    onClearMessages: () -> Unit
+) {
     var showAddDialog by remember { mutableStateOf(false) }
     var editingPromotion by remember { mutableStateOf<AdminPromotionItem?>(null) }
 
@@ -47,13 +74,13 @@ fun AdminPromotionManagementScreen(
     LaunchedEffect(state.successMessage) {
         state.successMessage?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.clearMessages()
+            onClearMessages()
         }
     }
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.clearMessages()
+            onClearMessages()
         }
     }
 
@@ -120,10 +147,10 @@ fun AdminPromotionManagementScreen(
                         PromotionRow(
                             promotion = promotion,
                             onEdit = { 
-                                viewModel.loadPromotionDetail(promotion.id)
+                                onEdit(promotion)
                                 editingPromotion = promotion 
                             },
-                            onDelete = { viewModel.deletePromotion(promotion.id) }
+                            onDelete = { onDelete(promotion.id) }
                         )
                         HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
                     }
@@ -137,8 +164,11 @@ fun AdminPromotionManagementScreen(
             title = "Thêm khuyến mãi mới",
             isUploading = state.isUploading,
             onDismiss = { showAddDialog = false },
-            onUploadImage = { context, uri, callback -> viewModel.uploadImage(context, uri, callback) },
-            onConfirm = { request -> viewModel.createPromotion(request) { showAddDialog = false } }
+            onUploadImage = onUploadImage,
+            onConfirm = { request -> 
+                onConfirmAdd(request)
+                showAddDialog = false 
+            }
         )
     }
 
@@ -157,14 +187,13 @@ fun AdminPromotionManagementScreen(
                 initialDetail = state.currentPromotionDetail,
                 onDismiss = { 
                     editingPromotion = null
-                    viewModel.clearEditingDetail()
+                    onClearDetail()
                 },
-                onUploadImage = { context, uri, callback -> viewModel.uploadImage(context, uri, callback) },
+                onUploadImage = onUploadImage,
                 onConfirm = { request ->
-                    viewModel.updatePromotion(promotion.id, request) { 
-                        editingPromotion = null
-                        viewModel.clearEditingDetail()
-                    }
+                    onConfirmUpdate(promotion.id, request)
+                    editingPromotion = null
+                    onClearDetail()
                 }
             )
         }
@@ -390,27 +419,26 @@ fun PromotionFormDialog(
     )
 }
 
+@Preview(showBackground = true, device = "spec:width=1280dp,height=800dp,orientation=landscape")
 @Composable
-fun AdminTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    singleLine: Boolean = true
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        modifier = modifier.fillMaxWidth(),
-        singleLine = singleLine,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            focusedLabelColor = CyanBlue,
-            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-            focusedBorderColor = CyanBlue,
-            unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
+fun AdminPromotionManagementPreview() {
+    MaterialTheme {
+        AdminPromotionManagementContent(
+            state = AdminPromotionState(
+                promotions = listOf(
+                    AdminPromotionItem(1L, "ƯU ĐÃI HỌC SINH SINH VIÊN", "Giá vé chỉ từ 45k cho HSSV", "https://via.placeholder.com/300x160", "2026-01-01", "2026-12-31", true),
+                    AdminPromotionItem(2L, "GIẢM 50% COMBO BẮP NƯỚC", "Áp dụng khi mua kèm 2 vé", "https://via.placeholder.com/300x160", "2026-05-01", "2026-05-31", false)
+                ),
+                isLoading = false
+            ),
+            onAddClick = {},
+            onEdit = { _ -> },
+            onDelete = { _ -> },
+            onUploadImage = { _, _, _ -> },
+            onConfirmAdd = { _ -> },
+            onConfirmUpdate = { _, _ -> },
+            onClearDetail = {},
+            onClearMessages = {}
         )
-    )
+    }
 }

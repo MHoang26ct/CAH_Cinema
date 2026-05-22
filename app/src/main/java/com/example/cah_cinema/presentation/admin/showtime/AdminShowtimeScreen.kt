@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.data.model.*
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
+import com.example.cah_cinema.presentation.admin.components.AdminTextField
 import com.example.cah_cinema.util.DateTimeUtils
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
@@ -282,20 +283,7 @@ fun EditShowtimeDialog(
                     onItemSelected = { format = it }
                 )
                 
-                OutlinedTextField(
-                    value = price, 
-                    onValueChange = { price = it }, 
-                    label = { Text("Giá vé cơ bản") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
+                AdminTextField(value = price, onValueChange = { price = it }, label = "Giá vé cơ bản")
             }
         },
         confirmButton = {
@@ -449,20 +437,7 @@ fun AddShowtimeDialog(
                     onItemSelected = { format = it }
                 )
                 
-                OutlinedTextField(
-                    value = price, 
-                    onValueChange = { price = it }, 
-                    label = { Text("Giá vé cơ bản") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
-                )
+                AdminTextField(value = price, onValueChange = { price = it }, label = "Giá vé cơ bản")
             }
         },
         confirmButton = {

@@ -32,7 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cah_cinema.data.model.FoodItem
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
-import com.example.cah_cinema.presentation.admin.movies.AdminTextField
+import com.example.cah_cinema.presentation.admin.components.AdminTextField
 import com.example.cah_cinema.presentation.user.booking.formatPrice
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
@@ -130,16 +130,12 @@ fun FoodFormDialog(
                     expanded = categoryExpanded,
                     onExpandedChange = { categoryExpanded = !categoryExpanded }
                 ) {
-                    OutlinedTextField(
+                    AdminTextField(
                         value = category,
                         onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                            focusedBorderColor = CyanBlue, unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
-                        )
+                        label = "",
+                        modifier = Modifier.menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) }
                     )
                     ExposedDropdownMenu(
                         expanded = categoryExpanded,
@@ -157,13 +153,9 @@ fun FoodFormDialog(
 
                 Text("Hình ảnh", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = imageUrl, onValueChange = { imageUrl = it }, label = { Text("URL Ảnh") },
-                        modifier = Modifier.weight(1f), singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                            focusedBorderColor = CyanBlue, unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
-                        )
+                    AdminTextField(
+                        value = imageUrl, onValueChange = { imageUrl = it }, label = "URL Ảnh",
+                        modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { imageLauncher.launch("image/*") }, enabled = !isUploading) {
                         if (isUploading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = CyanBlue, strokeWidth = 2.dp)

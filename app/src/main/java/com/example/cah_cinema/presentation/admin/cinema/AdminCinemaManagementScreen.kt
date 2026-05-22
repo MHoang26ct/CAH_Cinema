@@ -31,6 +31,7 @@ import coil.compose.AsyncImage
 import com.example.cah_cinema.data.model.CinemaItem
 import com.example.cah_cinema.data.model.RoomItem
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
+import com.example.cah_cinema.presentation.admin.components.AdminTextField
 import com.example.cah_cinema.presentation.navigation.Screen
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
@@ -199,19 +200,10 @@ fun AddRoomDialog(
         title = { Text("Thêm phòng chiếu mới", color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                AdminTextField(
                     value = roomName, 
                     onValueChange = { roomName = it }, 
-                    label = { Text("Tên phòng (ví dụ: Phòng 01)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.1f)
-                    )
+                    label = "Tên phòng (ví dụ: Phòng 01)"
                 )
             }
         },
@@ -258,64 +250,29 @@ fun CinemaFormDialog(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
+                AdminTextField(
                     value = name, 
                     onValueChange = { name = it }, 
-                    label = { Text("Tên rạp") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
+                    label = "Tên rạp"
                 )
-                OutlinedTextField(
+                AdminTextField(
                     value = address, 
                     onValueChange = { address = it }, 
-                    label = { Text("Địa chỉ") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
+                    label = "Địa chỉ"
                 )
-                OutlinedTextField(
+                AdminTextField(
                     value = hotline, 
                     onValueChange = { hotline = it }, 
-                    label = { Text("Hotline") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = CyanBlue,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                        focusedBorderColor = CyanBlue,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                    )
+                    label = "Hotline"
                 )
                 
                 Text("Hình ảnh rạp", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    AdminTextField(
                         value = imageUrl,
                         onValueChange = { imageUrl = it },
-                        label = { Text("URL Hình ảnh") },
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedLabelColor = CyanBlue,
-                            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
-                            focusedBorderColor = CyanBlue,
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
-                        )
+                        label = "URL Hình ảnh",
+                        modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = { imageLauncher.launch("image/*") }, enabled = !isUploading) {
                         if (isUploading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = CyanBlue, strokeWidth = 2.dp)
