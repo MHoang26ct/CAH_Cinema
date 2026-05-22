@@ -9,6 +9,7 @@ import com.example.cah_cinema.domain.model.SeatStatus
 import com.example.cah_cinema.domain.model.SeatType
 import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.data.model.SeatItem
+import com.example.cah_cinema.data.model.PreLockRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -78,19 +79,23 @@ class SeatSelectionViewModel(
     }
 
     private fun SeatItem.toDomainSeat(): Seat {
+        val seatTypeName = this.seatType.typeName
         return Seat(
             id = this.id.toString(),
-            row = ('A' + (this.row.toInt() - 1)).toString(),
-            number = this.col.toInt().toString().padStart(2, '0'),
-            type = when(this.type) {
+            row = this.row,
+            col = this.col,
+            rowLabel = this.rowLabel,
+            colLabel = this.colLabel,
+            type = when (seatTypeName) {
                 "COUPLE" -> SeatType.COUPLE
                 "VIP" -> SeatType.VIP
+                "AISLE" -> SeatType.AISLE
                 else -> SeatType.REGULAR
             },
-            status = when(this.status) {
-                "AVAILABLE" -> SeatStatus.AVAILABLE
-                "LOCKED", "BOOKED" -> SeatStatus.TAKEN_BY_OTHERS
-                else -> SeatStatus.MAINTENANCE
+            status = when (this.occupancyStatus) {
+                "SOLD" -> SeatStatus.BOOKED
+                "LOCKED" -> SeatStatus.TAKEN_BY_OTHERS
+                else -> SeatStatus.AVAILABLE
             }
         )
     }
@@ -105,21 +110,31 @@ class SeatSelectionViewModel(
                 _state.update { it.copy(errorMessage = "Ghế đang bảo trì") }
                 return
             }
-            else -> {} 
+            else -> {}
         }
+
+        val stId = showtimeId?.toLongOrNull() ?: return
+        val seatIdLong = seat.id.toLongOrNull() ?: return
 
         _state.update { currentState ->
             val isSelected = currentState.selectedSeats.any { it.id == seat.id }
-            
+
             if (!isSelected) {
-                val totalTicketsAllowed = currentState.regularTicketsCount + currentState.coupleTicketsCount
+                val totalTicketsAllowed = currentState.regularTicketsCount + (currentState.coupleTicketsCount * 2)
                 if (currentState.selectedSeats.size >= totalTicketsAllowed) return@update currentState
-                
+
                 val newSelectedSeats = currentState.selectedSeats + seat
                 val updatedSeats = currentState.seats.map {
                     if (it.id == seat.id) it.copy(status = SeatStatus.SELECTED) else it
                 }
-                
+
+                // Gọi API lock ghế trên server
+                viewModelScope.launch {
+                    try {
+                        RetrofitClient.apiService.lockSeat(seatIdLong, stId)
+                    } catch (_: Exception) { }
+                }
+
                 currentState.copy(
                     seats = updatedSeats,
                     selectedSeats = newSelectedSeats,
@@ -130,7 +145,14 @@ class SeatSelectionViewModel(
                 val updatedSeats = currentState.seats.map {
                     if (it.id == seat.id) it.copy(status = SeatStatus.AVAILABLE) else it
                 }
-                
+
+                // Gọi API unlock ghế trên server
+                viewModelScope.launch {
+                    try {
+                        RetrofitClient.apiService.unlockSeat(seatIdLong, stId)
+                    } catch (_: Exception) { }
+                }
+
                 currentState.copy(
                     seats = updatedSeats,
                     selectedSeats = newSelectedSeats,
@@ -140,11 +162,26 @@ class SeatSelectionViewModel(
         }
     }
 
+    /**
+     * Unlock tất cả ghế đang giữ khi user thoát màn hình (timeout hoặc back).
+     */
+    fun unlockAllSelectedSeats() {
+        val stId = showtimeId?.toLongOrNull() ?: return
+        val selectedIds = _state.value.selectedSeats.mapNotNull { it.id.toLongOrNull() }
+        if (selectedIds.isEmpty()) return
+        viewModelScope.launch {
+            selectedIds.forEach { seatId ->
+                try { RetrofitClient.apiService.unlockSeat(seatId, stId) } catch (_: Exception) { }
+            }
+        }
+    }
+
     fun clearErrorMessage() {
         _state.update { it.copy(errorMessage = null) }
     }
 
     fun getTotalAmount(): Double {
-        return _state.value.basePrice // Tạm thời dùng basePrice, backend sẽ tính toán khi tạo booking
+        return (_state.value.regularTicketsCount * _state.value.basePrice) + 
+               (_state.value.coupleTicketsCount * _state.value.basePrice * 2)
     }
 }

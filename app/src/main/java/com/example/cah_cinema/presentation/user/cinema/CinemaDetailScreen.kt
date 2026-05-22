@@ -53,6 +53,37 @@ fun CinemaDetailScreen(
                 .padding(paddingValues)
         ) {
             item {
+                if (!state.cinemaImageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = state.cinemaImageUrl,
+                        contentDescription = state.cinemaName,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = state.cinemaName,
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (state.cinemaAddress.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = state.cinemaAddress,
+                            color = TextGray,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                
+                HorizontalDivider(color = Color.White.copy(alpha = 0.1f), modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
                 DateSelectionSection(
                     dates = state.availableDates,
                 ) { viewModel.onDateSelected(it) }

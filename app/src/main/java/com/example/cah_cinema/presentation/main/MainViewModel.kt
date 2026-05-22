@@ -3,7 +3,7 @@ package com.example.cah_cinema.presentation.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.remote.RetrofitClient
-import kotlinx.coroutines.delay
+import com.example.cah_cinema.presentation.navigation.Screen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +13,7 @@ class MainViewModel : ViewModel() {
     private val _isReady = MutableStateFlow(false)
     val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
 
-    private val _startDestination = MutableStateFlow("login")
+    private val _startDestination = MutableStateFlow(Screen.Login.route)
     val startDestination: StateFlow<String> = _startDestination.asStateFlow()
 
     init {
@@ -22,12 +22,31 @@ class MainViewModel : ViewModel() {
 
     private fun initialize() {
         viewModelScope.launch {
-            // Simulate initialization (e.g., checking token, fetching config)
-            // In a real app, we would check SharedPreferences or EncryptedSharedPreferences here
-            delay(1000) 
+            val savedToken = RetrofitClient.getToken()
             
-            // Check if user is already logged in (Mock logic)
-            // If token existed, we could go to "home"
+            if (!savedToken.isNullOrEmpty()) {
+                try {
+                    // Thử gọi API profile để kiểm tra token còn hạn không và lấy role
+                    val response = RetrofitClient.apiService.getMyProfile()
+                    if (response.isSuccessful && response.body()?.code == 200) {
+                        val role = response.body()?.data?.user?.role ?: "ROLE_USER"
+                        if (role == "ROLE_ADMIN") {
+                            _startDestination.value = Screen.AdminDashboard.route
+                        } else {
+                            _startDestination.value = Screen.Home.route
+                        }
+                    } else {
+                        // Token hết hạn hoặc không hợp lệ
+                        RetrofitClient.setToken(null)
+                        _startDestination.value = Screen.Login.route
+                    }
+                } catch (e: Exception) {
+                    // Lỗi mạng — vẫn để ở Login cho an toàn hoặc giữ Home nếu muốn offline
+                    _startDestination.value = Screen.Login.route
+                }
+            } else {
+                _startDestination.value = Screen.Login.route
+            }
             
             _isReady.value = true
         }

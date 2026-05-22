@@ -11,8 +11,9 @@ interface AdminRepository {
 
     // Movies
     suspend fun createMovie(request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>?
+    suspend fun updateMovie(id: Long, request: UpdateOrCreateMovieRequest): BaseResponse<MovieDetail>?
     suspend fun deleteMovie(id: Long): BaseResponse<Unit>?
-    suspend fun getMovies(): BaseResponse<MoviePageData>?
+    suspend fun getMovies(page: Int = 0, size: Int = 20, sort: String? = null): BaseResponse<MoviePageData>?
 
     // Cinemas
     suspend fun getCinemas(): BaseResponse<List<CinemaItem>>?
@@ -27,12 +28,12 @@ interface AdminRepository {
 
     // Showtimes
     suspend fun getShowtimesByCinema(cinemaId: Long, date: String): BaseResponse<List<CinemaShowtimeItem>>?
-    suspend fun createShowtime(request: CreateShowtimeRequest): BaseResponse<ShowtimeInfo>?
-    suspend fun updateShowtime(request: UpdateShowtimeRequest): BaseResponse<ShowtimeInfo>?
+    suspend fun createShowtime(request: CreateShowtimeRequest): BaseResponse<Unit>?
+    suspend fun updateShowtime(request: UpdateShowtimeRequest): BaseResponse<Unit>?
     suspend fun deleteShowtime(id: Long): BaseResponse<Unit>?
 
     // Vouchers
-    suspend fun getAllVouchers(page: Int): BaseResponse<List<VoucherItem>>?
+    suspend fun getAllVouchers(page: Int): BaseResponse<SliceResponse<VoucherItem>>?
     suspend fun getVoucherDetail(voucherId: Long): BaseResponse<VoucherItem>?
     suspend fun createVoucher(request: CreateVoucherRequest): BaseResponse<VoucherItem>?
     suspend fun updateVoucher(request: UpdateVoucherRequest): BaseResponse<VoucherItem>?
@@ -49,4 +50,17 @@ interface AdminRepository {
     // Seats
     suspend fun createSeats(request: List<CreateSeatRequest>): BaseResponse<Unit>?
     suspend fun deleteSeatsByRoom(roomId: Long): BaseResponse<Unit>?
+
+    // Food
+    suspend fun getFoods(): BaseResponse<List<FoodItem>>?
+    suspend fun createFood(request: FoodItem): BaseResponse<FoodItem>?
+    suspend fun updateFood(id: Long, request: FoodItem): BaseResponse<FoodItem>?
+    suspend fun deleteFood(id: Long): BaseResponse<Unit>?
+
+    // Promotions
+    suspend fun getAdminPromotions(page: Int): BaseResponse<SliceResponse<AdminPromotionItem>>?
+    suspend fun getAdminPromotionDetail(id: Long): BaseResponse<AdminPromotionDetail>?
+    suspend fun createPromotion(request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>?
+    suspend fun updatePromotion(id: Long, request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>?
+    suspend fun deletePromotion(id: Long): BaseResponse<Unit>?
 }

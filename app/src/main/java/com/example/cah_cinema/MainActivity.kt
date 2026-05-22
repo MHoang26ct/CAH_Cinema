@@ -44,15 +44,17 @@ import com.example.cah_cinema.presentation.user.booking.PaymentViewModel
 import com.example.cah_cinema.presentation.user.profile.ChangePasswordScreen
 import com.example.cah_cinema.presentation.user.profile.EditProfileScreen
 import com.example.cah_cinema.presentation.user.profile.TicketDetailScreen
+import com.example.cah_cinema.presentation.user.profile.BookingHistoryScreen
 import com.example.cah_cinema.presentation.user.booking.PaymentLoadingScreen
 import com.example.cah_cinema.presentation.user.home.UpcomingMoviesScreen
-import com.example.cah_cinema.presentation.user.splash.SplashScreen
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.presentation.navigation.Screen
 import com.example.cah_cinema.presentation.user.booking.VoucherScreen
 import com.example.cah_cinema.presentation.admin.dashboard.AdminDashboardScreen
 import com.example.cah_cinema.presentation.admin.movies.AdminMovieManagementScreen
+import com.example.cah_cinema.presentation.admin.promotion.AdminPromotionManagementScreen
 import com.example.cah_cinema.presentation.admin.cinema.AdminCinemaManagementScreen
 import com.example.cah_cinema.presentation.admin.voucher.AdminVoucherScreen
 import com.example.cah_cinema.presentation.admin.showtime.AdminShowtimeScreen
@@ -64,17 +66,21 @@ import com.example.cah_cinema.presentation.user.promotion.PromotionDetailScreen
 import com.example.cah_cinema.presentation.main.MainViewModel
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 
+import com.example.cah_cinema.data.remote.RetrofitClient
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         
+        RetrofitClient.init(this)
+        
         enableEdgeToEdge()
         setContent {
             val mainViewModel: MainViewModel = viewModel()
             val isReady by mainViewModel.isReady.collectAsState()
+            val startDestination by mainViewModel.startDestination.collectAsState()
             
-            // Giữ màn hình splash hệ thống cho đến khi ViewModel sẵn sàng
             splashScreen.setKeepOnScreenCondition { !isReady }
 
             CAH_CinemaTheme {
@@ -82,7 +88,8 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                // Danh sách các màn hình hiển thị thanh điều hướng dưới (Bottom Bar)
+                if (!isReady) return@CAH_CinemaTheme
+
                 val bottomBarScreens = listOf(
                     Screen.Home.route,
                     Screen.Cinema.route,
@@ -110,52 +117,56 @@ class MainActivity : ComponentActivity() {
                             .padding(bottom = if (currentRoute in bottomBarScreens) innerPadding.calculateBottomPadding() else 0.dp),
                         color = Color(0xFF13131A),
                     ) {
-                        // Định nghĩa chỉ mục tab cho hiệu ứng chuyển động theo hướng
                         val tabIndices = mapOf(
                             Screen.Home.route to 0,
                             Screen.Cinema.route to 1,
                             Screen.Notification.route to 2,
                             Screen.Profile.route to 3,
-                            // Admin Indices
                             Screen.AdminDashboard.route to 10,
                             Screen.AdminMovieManagement.route to 11,
                             Screen.AdminCinemaManagement.route to 12,
-                            Screen.AdminShowtimeManagement.route to 13,
-                            Screen.AdminVoucherManagement.route to 14,
-                            Screen.AdminReport.route to 15,
-                            Screen.AdminSettings.route to 16
+                            Screen.AdminPromotionManagement.route to 13,
+                            Screen.AdminShowtimeManagement.route to 14,
+                            Screen.AdminFoodManagement.route to 15,
+                            Screen.AdminVoucherManagement.route to 16,
+                            Screen.AdminReport.route to 17,
+                            Screen.AdminSettings.route to 18
                         )
 
+                        val isSidebarExpanded = remember { androidx.compose.runtime.mutableStateOf(false) }
+
                         Row(modifier = Modifier.fillMaxSize()) {
-                            // Admin Sidebar (Persistent)
                             if (currentRoute?.startsWith("admin_") == true) {
                                 AdminSidebar(
                                     currentRoute = currentRoute,
-                                    onNavigate = { route -> navController.navigateToTab(route) },
+                                    isExpanded = isSidebarExpanded.value,
+                                    onToggle = { isSidebarExpanded.value = !isSidebarExpanded.value },
+                                    onNavigate = { route ->
+                                        navController.navigateToTab(route)
+                                        isSidebarExpanded.value = false
+                                    },
                                     onLogout = {
                                         navController.navigate(Screen.Login.route) {
                                             popUpTo(0) { inclusive = true }
                                         }
                                     },
-                                    modifier = Modifier.width(260.dp).fillMaxHeight()
+                                    modifier = Modifier.fillMaxHeight()
                                 )
                             }
 
                             Box(modifier = Modifier.weight(1f)) {
                                 NavHost(
                                     navController = navController,
-                                    startDestination = Screen.Splash.route,
+                                    startDestination = startDestination,
                                     modifier = Modifier.fillMaxSize(),
                                     enterTransition = {
                                         val initial = initialState.destination.route ?: ""
                                         val target = targetState.destination.route ?: ""
-                                        
                                         val initialIndex = tabIndices[initial]
                                         val targetIndex = tabIndices[target]
-
                                         val isAdminTransition = initial.startsWith("admin_") && target.startsWith("admin_")
 
-                                        if ((initialIndex != null) && (targetIndex != null)) {
+                                        if (initialIndex != null && targetIndex != null) {
                                             if (isAdminTransition) {
                                                 if (targetIndex > initialIndex) {
                                                     slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400))
@@ -170,19 +181,17 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         } else {
-                                            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400))
+                                            fadeIn(animationSpec = tween(400))
                                         }
                                     },
                                     exitTransition = {
                                         val initial = initialState.destination.route ?: ""
                                         val target = targetState.destination.route ?: ""
-                                        
                                         val initialIndex = tabIndices[initial]
                                         val targetIndex = tabIndices[target]
-
                                         val isAdminTransition = initial.startsWith("admin_") && target.startsWith("admin_")
 
-                                        if ((initialIndex != null) && (targetIndex != null)) {
+                                        if (initialIndex != null && targetIndex != null) {
                                             if (isAdminTransition) {
                                                 if (targetIndex > initialIndex) {
                                                     slideOutVertically(targetOffsetY = { -it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
@@ -197,26 +206,10 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                         } else {
-                                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
+                                            fadeOut(animationSpec = tween(400))
                                         }
-                                    },
-                                    popEnterTransition = {
-                                        slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(400)) + fadeIn(animationSpec = tween(400))
-                                    },
-                                    popExitTransition = {
-                                        slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(400)) + fadeOut(animationSpec = tween(400))
                                     }
                                 ) {
-                                    composable(Screen.Splash.route) {
-                                        SplashScreen(
-                                            onNextScreen = {
-                                                navController.navigate(Screen.Login.route) {
-                                                    popUpTo(Screen.Splash.route) { inclusive = true }
-                                                }
-                                            }
-                                        )
-                                    }
-
                                     composable(Screen.Login.route) {
                                         LoginScreen(
                                             onLoginSuccess = { role ->
@@ -230,12 +223,8 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 }
                                             },
-                                            onForgotPasswordClick = {
-                                                navController.navigate(Screen.ForgotPassword.route)
-                                            },
-                                            onRegisterClick = {
-                                                navController.navigate(Screen.Register.route)
-                                            }
+                                            onForgotPasswordClick = { navController.navigate(Screen.ForgotPassword.route) },
+                                            onRegisterClick = { navController.navigate(Screen.Register.route) }
                                         )
                                     }
 
@@ -249,9 +238,7 @@ class MainActivity : ComponentActivity() {
 
                                     composable(Screen.Register.route) {
                                         RegisterScreen(
-                                            onLoginClick = {
-                                                navController.navigate(Screen.Login.route)
-                                            }
+                                            onLoginClick = { navController.navigate(Screen.Login.route) }
                                         )
                                     }
 
@@ -299,43 +286,29 @@ class MainActivity : ComponentActivity() {
 
                                     composable(Screen.Home.route) {
                                         HomeScreen(
-                                            onMovieClick = { movieId ->
-                                                navController.navigate(Screen.MovieDetail.createRoute(movieId))
-                                            },
-                                            onPromotionClick = { promotionId ->
-                                                navController.navigate(Screen.PromotionDetail.createRoute(promotionId))
-                                            },
-                                            onSeeAllUpcomingClick = {
-                                                navController.navigate(Screen.UpcomingMovies.route)
-                                            },
-                                            onSeeAllPromotionsClick = {
-                                                navController.navigateToTab(Screen.Notification.route)
-                                            }
+                                            onMovieClick = { movieId -> navController.navigate(Screen.MovieDetail.createRoute(movieId)) },
+                                            onPromotionClick = { promotionId -> navController.navigate(Screen.PromotionDetail.createRoute(promotionId)) },
+                                            onSeeAllUpcomingClick = { navController.navigate(Screen.UpcomingMovies.route) },
+                                            onSeeAllPromotionsClick = { navController.navigateToTab(Screen.Notification.route) }
                                         )
                                     }
 
                                     composable(Screen.UpcomingMovies.route) {
                                         UpcomingMoviesScreen(
                                             onBackClick = { navController.popBackStack() },
-                                            onMovieClick = { movieId ->
-                                                navController.navigate(Screen.MovieDetail.createRoute(movieId))
-                                            }
+                                            onMovieClick = { movieId -> navController.navigate(Screen.MovieDetail.createRoute(movieId)) }
                                         )
                                     }
 
                                     composable(Screen.Cinema.route) {
                                         CinemaScreen(
-                                            onCinemaClick = { cinemaId ->
-                                                navController.navigate(Screen.CinemaDetail.createRoute(cinemaId))
-                                            }
+                                            onCinemaClick = { cinemaId -> navController.navigate(Screen.CinemaDetail.createRoute(cinemaId)) }
                                         )
                                     }
 
                                     composable(Screen.Notification.route) {
                                         NotificationScreen(
-                                            onPromotionClick = { promotionId ->
-                                                navController.navigate(Screen.PromotionDetail.createRoute(promotionId))
-                                            }
+                                            onPromotionClick = { promotionId -> navController.navigate(Screen.PromotionDetail.createRoute(promotionId)) }
                                         )
                                     }
 
@@ -343,18 +316,11 @@ class MainActivity : ComponentActivity() {
                                         val viewModel: ProfileViewModel = viewModel()
                                         ProfileScreen(
                                             viewModel = viewModel,
-                                            onNavigateToChangePassword = {
-                                                navController.navigate(Screen.ChangePassword.route)
-                                            },
-                                            onNavigateToEditProfile = {
-                                                navController.navigate(Screen.EditProfile.route)
-                                            },
-                                            onNavigateToTicketDetail = {
-                                                navController.navigate(Screen.TicketDetail.route)
-                                            },
-                                            onNavigateToAdmin = {
-                                                navController.navigate(Screen.AdminDashboard.route)
-                                            },
+                                            onNavigateToChangePassword = { navController.navigate(Screen.ChangePassword.route) },
+                                            onNavigateToEditProfile = { navController.navigate(Screen.EditProfile.route) },
+                                            onNavigateToAllTickets = { navController.navigate(Screen.BookingHistory.route) },
+                                            onNavigateToTicketDetail = { navController.navigate(Screen.TicketDetail.route) },
+                                            onNavigateToAdmin = { navController.navigate(Screen.AdminDashboard.route) },
                                             onLogout = {
                                                 navController.navigate(Screen.Login.route) {
                                                     popUpTo(0) { inclusive = true }
@@ -363,12 +329,22 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
 
+                                    composable(Screen.BookingHistory.route) {
+                                        val viewModel: ProfileViewModel = viewModel()
+                                        BookingHistoryScreen(
+                                            viewModel = viewModel,
+                                            onBackClick = { navController.popBackStack() },
+                                            onTicketClick = { invoice ->
+                                                viewModel.setSelectedInvoice(invoice)
+                                                navController.navigate(Screen.TicketDetail.route)
+                                            }
+                                        )
+                                    }
+
                                     composable(Screen.ChangePassword.route) {
                                         ChangePasswordScreen(
                                             onBackClick = { navController.popBackStack() },
-                                            onSaveClick = { _, _, _ ->
-                                                navController.popBackStack()
-                                            }
+                                            onSaveClick = { _, _, _ -> navController.popBackStack() }
                                         )
                                     }
 
@@ -377,9 +353,7 @@ class MainActivity : ComponentActivity() {
                                         EditProfileScreen(
                                             viewModel = viewModel,
                                             onBackClick = { navController.popBackStack() },
-                                            onSaveClick = { _, _, _ ->
-                                                navController.popBackStack()
-                                            }
+                                            onSaveClick = { _, _, _ -> navController.popBackStack() }
                                         )
                                     }
                                     
@@ -388,9 +362,7 @@ class MainActivity : ComponentActivity() {
                                         arguments = listOf(navArgument("cinemaId") { type = NavType.StringType })
                                     ) {
                                         CinemaDetailScreen(
-                                            onBackClick = {
-                                                navController.popBackStack()
-                                            },
+                                            onBackClick = { navController.popBackStack() },
                                             onShowtimeClick = { movieId, showtimeId, date, time ->
                                                 val encodedDate = date.replace("/", "-")
                                                 navController.navigate(Screen.TicketSelection.createRoute(movieId, showtimeId, encodedDate, time))
@@ -402,11 +374,7 @@ class MainActivity : ComponentActivity() {
                                         route = Screen.PromotionDetail.route,
                                         arguments = listOf(navArgument("promotionId") { type = NavType.StringType })
                                     ) {
-                                        PromotionDetailScreen(
-                                            onBackClick = {
-                                                navController.popBackStack()
-                                            }
-                                        )
+                                        PromotionDetailScreen(onBackClick = { navController.popBackStack() })
                                     }
 
                                     composable(
@@ -414,9 +382,7 @@ class MainActivity : ComponentActivity() {
                                         arguments = listOf(navArgument("movieId") { type = NavType.StringType })
                                     ) {
                                         MovieDetailScreen(
-                                            onBackClick = {
-                                                navController.popBackStack()
-                                            },
+                                            onBackClick = { navController.popBackStack() },
                                             onShowtimeClick = { movieId, showtimeId, date, time ->
                                                 val encodedDate = date.replace("/", "-")
                                                 navController.navigate(Screen.TicketSelection.createRoute(movieId, showtimeId, encodedDate, time))
@@ -434,9 +400,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                     ) { entry ->
                                         TicketSelectionScreen(
-                                            onBackClick = {
-                                                navController.popBackStack()
-                                            },
+                                            onBackClick = { navController.popBackStack() },
                                             onBookClick = { regularCount, coupleCount, basePrice ->
                                                 val movieId = entry.arguments?.getString("movieId") ?: ""
                                                 val showtimeId = entry.arguments?.getString("showtimeId") ?: ""
@@ -464,22 +428,12 @@ class MainActivity : ComponentActivity() {
                                         val date = entry.arguments?.getString("date") ?: ""
                                         val time = entry.arguments?.getString("time") ?: ""
                                         SeatSelectionScreen(
-                                            onBackClick = {
-                                                navController.popBackStack()
-                                            },
+                                            onBackClick = { navController.popBackStack() },
                                             onConfirmClick = { seatIds, seatsDisplay, totalAmount ->
                                                 navController.navigate(
-                                                    Screen.Concession.createRoute(
-                                                        movieId,
-                                                        showtimeId,
-                                                        seatIds,
-                                                        seatsDisplay,
-                                                        totalAmount.toFloat(),
-                                                        date,
-                                                        time,
-                                                    ),
+                                                    Screen.Concession.createRoute(movieId, showtimeId, seatIds, seatsDisplay, totalAmount.toFloat(), date, time)
                                                 )
-                                            },
+                                            }
                                         )
                                     }
 
@@ -501,21 +455,13 @@ class MainActivity : ComponentActivity() {
                                         val seatsDisplay = entry.arguments?.getString("seatsDisplay") ?: ""
                                         val date = entry.arguments?.getString("date") ?: ""
                                         val time = entry.arguments?.getString("time") ?: ""
+                                        val paymentViewModel: PaymentViewModel = viewModel(viewModelStoreOwner = entry)
                                         ConcessionScreen(
-                                            onBackClick = {
-                                                navController.popBackStack()
-                                            },
+                                            paymentViewModel = paymentViewModel,
+                                            onBackClick = { navController.popBackStack() },
                                             onPaymentClick = { updatedTotal ->
                                                 navController.navigate(
-                                                    Screen.Payment.createRoute(
-                                                        movieId,
-                                                        showtimeId,
-                                                        seatIds,
-                                                        seatsDisplay,
-                                                        updatedTotal.toFloat(),
-                                                        date,
-                                                        time
-                                                    )
+                                                    Screen.Payment.createRoute(movieId, showtimeId, seatIds, seatsDisplay, updatedTotal.toFloat(), date, time)
                                                 )
                                             }
                                         )
@@ -534,21 +480,19 @@ class MainActivity : ComponentActivity() {
                                         )
                                     ) { entry ->
                                         val voucherName by entry.savedStateHandle.getStateFlow<String?>("voucherName", null).collectAsState()
+                                        val voucherId by entry.savedStateHandle.getStateFlow<Long?>("voucherId", null).collectAsState()
                                         val voucherDiscount by entry.savedStateHandle.getStateFlow<Double?>("voucherDiscount", null).collectAsState()
 
+                                        val concessionEntry = remember(entry) { navController.getBackStackEntry(Screen.Concession.route) }
+                                        val paymentViewModel: PaymentViewModel = viewModel(viewModelStoreOwner = concessionEntry)
+
                                         PaymentScreen(
-                                            onBackClick = {
-                                                navController.popBackStack()
-                                            },
-                                            onPaymentSuccess = {
-                                                navController.navigate(Screen.PaymentLoading.route) {
-                                                    popUpTo(Screen.Home.route) { inclusive = false }
-                                                }
-                                            },
-                                            onSelectVoucher = { total ->
-                                                navController.navigate(Screen.Voucher.createRoute(total.toFloat()))
-                                            },
+                                            viewModel = paymentViewModel,
+                                            onBackClick = { navController.popBackStack() },
+                                            onPaymentSuccess = { navController.navigate(Screen.PaymentLoading.route) },
+                                            onSelectVoucher = { total -> navController.navigate(Screen.Voucher.createRoute(total.toFloat())) },
                                             voucherName = voucherName,
+                                            voucherId = voucherId,
                                             voucherDiscount = voucherDiscount
                                         )
                                     }
@@ -561,19 +505,21 @@ class MainActivity : ComponentActivity() {
                                         VoucherScreen(
                                             currentTotal = totalAmount,
                                             onBackClick = { navController.popBackStack() },
-                                            onConfirm = { code, discount ->
+                                            onConfirm = { code, id, discount ->
                                                 navController.previousBackStackEntry?.savedStateHandle?.set("voucherName", code)
+                                                navController.previousBackStackEntry?.savedStateHandle?.set("voucherId", id)
                                                 navController.previousBackStackEntry?.savedStateHandle?.set("voucherDiscount", discount)
                                                 navController.popBackStack()
                                             }
                                         )
                                     }
 
-                                    composable(Screen.PaymentLoading.route) {
+                                    composable(Screen.PaymentLoading.route) { entry ->
                                         val profileViewModel: ProfileViewModel = viewModel()
-                                        val paymentViewModel: PaymentViewModel = viewModel()
+                                        val concessionEntry = remember(entry) { navController.getBackStackEntry(Screen.Concession.route) }
+                                        val paymentViewModel: PaymentViewModel = viewModel(viewModelStoreOwner = concessionEntry)
                                         val paymentState by paymentViewModel.uiState.collectAsState()
-                                        
+
                                         PaymentLoadingScreen(
                                             onLoadingComplete = {
                                                 profileViewModel.updateRecentTicket(
@@ -582,53 +528,39 @@ class MainActivity : ComponentActivity() {
                                                         cinemaName = paymentState.cinemaName,
                                                         showTime = "${paymentState.showtime} - ${paymentState.date}",
                                                         seat = paymentState.selectedSeats.joinToString(", "),
-                                                        posterUrl = paymentState.posterUrl
+                                                        posterUrl = paymentState.posterUrl,
+                                                        bookingId = paymentState.bookingId ?: 0L
                                                     )
                                                 )
-
+                                                profileViewModel.loadProfileData()
                                                 navController.navigate(Screen.TicketDetail.route) {
-                                                    popUpTo(Screen.PaymentLoading.route) { inclusive = true }
+                                                    popUpTo(Screen.Home.route) { inclusive = false }
                                                 }
                                             }
                                         )
                                     }
 
-                                    composable(Screen.AdminDashboard.route) {
-                                        AdminDashboardScreen()
+                                    composable(Screen.AdminDashboard.route) { AdminDashboardScreen() }
+                                    composable(Screen.AdminMovieManagement.route) { AdminMovieManagementScreen() }
+                                    composable(Screen.AdminCinemaManagement.route) { AdminCinemaManagementScreen(onNavigate = { route -> navController.navigate(route) }) }
+                                    composable(Screen.AdminPromotionManagement.route) { AdminPromotionManagementScreen() }
+                                    composable(Screen.AdminVoucherManagement.route) { AdminVoucherScreen() }
+                                    composable(Screen.AdminShowtimeManagement.route) { AdminShowtimeScreen(onNavigate = { route -> navController.navigate(route) }) }
+                                    composable(Screen.AdminFoodManagement.route) { 
+                                        com.example.cah_cinema.presentation.admin.food.AdminFoodManagementScreen() 
                                     }
-
-                                    composable(Screen.AdminMovieManagement.route) {
-                                        AdminMovieManagementScreen()
-                                    }
-
-                                    composable(Screen.AdminCinemaManagement.route) {
-                                        AdminCinemaManagementScreen()
-                                    }
-
-                                    composable(Screen.AdminVoucherManagement.route) {
-                                        AdminVoucherScreen()
-                                    }
-
-                                    composable(Screen.AdminShowtimeManagement.route) {
-                                        AdminShowtimeScreen()
-                                    }
-
-                                    composable(Screen.AdminReport.route) {
-                                        AdminReportScreen()
-                                    }
-
+                                    composable(Screen.AdminReport.route) { AdminReportScreen() }
                                     composable(
                                         route = Screen.AdminSeatManagement.route,
                                         arguments = listOf(navArgument("roomId") { type = NavType.LongType })
-                                    ) {
+                                    ) { entry ->
+                                        val roomId = entry.arguments?.getLong("roomId") ?: 0L
                                         AdminSeatManagementScreen(
+                                            roomId = roomId,
                                             onBack = { navController.popBackStack() }
                                         )
                                     }
-
-                                    composable(Screen.AdminSettings.route) {
-                                        AdminSettingsScreen()
-                                    }
+                                    composable(Screen.AdminSettings.route) { AdminSettingsScreen() }
                                 }
                             }
                         }
@@ -639,21 +571,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * Hàm mở rộng để xử lý chuyển tab điều hướng dưới đúng cách.
- * - Tái sử dụng các thực thể màn hình hiện có nếu có thể.
- * - Tránh tích tụ lịch sử điều hướng lớn.
- * - Khôi phục trạng thái khi quay lại tab.
- */
 fun NavController.navigateToTab(route: String) {
     this.navigate(route) {
-        // Quay về đích bắt đầu của đồ thị để tránh tích tụ ngăn xếp lớn
-        popUpTo(this@navigateToTab.graph.findStartDestination().id) {
-            saveState = true
-        }
-        // Tránh nhiều bản sao của cùng một đích khi chọn lại cùng một mục
+        popUpTo(this@navigateToTab.graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
-        // Khôi phục trạng thái khi chọn lại một mục đã chọn trước đó
         restoreState = true
     }
 }

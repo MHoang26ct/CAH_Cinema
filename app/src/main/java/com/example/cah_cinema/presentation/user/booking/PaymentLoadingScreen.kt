@@ -1,17 +1,9 @@
 package com.example.cah_cinema.presentation.user.booking
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,9 +18,9 @@ import kotlinx.coroutines.delay
 fun PaymentLoadingScreen(
     onLoadingComplete: () -> Unit
 ) {
+    // Chờ tối thiểu 1.5s để UX mượt, sau đó navigate
     LaunchedEffect(Unit) {
-        // Mô phỏng quá trình tạo vé (ví dụ: tạo mã QR, đồng bộ hóa máy chủ)
-        delay(3000) 
+        delay(1500)
         onLoadingComplete()
     }
 
@@ -44,20 +36,20 @@ fun PaymentLoadingScreen(
             modifier = Modifier.size(64.dp),
             strokeWidth = 6.dp
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Text(
-            text = "Đang tạo mã vé...",
+            text = "Đặt vé thành công!",
             style = MaterialTheme.typography.headlineSmall,
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(12.dp))
-        
+
         Text(
-            text = "Vui lòng đợi trong giây lát,\nhệ thống đang xử lý thông tin đặt vé của bạn.",
+            text = "Đang tạo mã vé của bạn...",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,

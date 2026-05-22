@@ -12,6 +12,9 @@ interface ApiService {
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<BaseResponse<LoginData>>
 
+    @POST("api/v1/auth/google")
+    suspend fun googleLogin(@Body request: GoogleLoginRequest): Response<BaseResponse<LoginData>>
+
     @POST("api/v1/auth/send-otp")
     suspend fun sendOtp(@Body request: OtpRequest): Response<BaseResponse<Unit>>
 
@@ -24,14 +27,21 @@ interface ApiService {
     @POST("api/v1/auth/fp-change-password")
     suspend fun changeForgotPassword(@Body request: ResetPasswordRequest): Response<BaseResponse<Unit>>
 
+    @POST("api/v1/auth/change-password")
+    suspend fun changePassword(@Body request: ChangePasswordRequest): Response<BaseResponse<Unit>>
+
     // 2. Movies
+    @GET("api/v1/public/movies/featured")
+    suspend fun getFeaturedMovies(): Response<BaseResponse<FeaturedMoviesData>>
+
     @GET("api/v1/public/movies")
     suspend fun getMovies(
         @Query("title") title: String? = null,
         @Query("genreId") genreId: Long? = null,
         @Query("ageRating") ageRating: String? = null,
         @Query("page") page: Int = 0,
-        @Query("size") size: Int = 20
+        @Query("size") size: Int = 20,
+        @Query("sort") sort: String? = null
     ): Response<BaseResponse<MoviePageData>>
 
     @GET("api/v1/public/movies/{id}")
@@ -49,7 +59,7 @@ interface ApiService {
     suspend fun getShowtimesByMovie(
         @Path("movieId") movieId: Long,
         @Query("date") date: String // format: yyyy-MM-dd
-    ): Response<BaseResponse<List<MovieShowtimeItem>>>
+    ): Response<BaseResponse<MovieShowtimesResponse>>
 
     @GET("api/v1/public/showtimes/cinemas/{cinemaId}")
     suspend fun getShowtimesByCinema(
@@ -175,17 +185,17 @@ interface ApiService {
 
     // Admin Showtimes
     @POST("api/v1/admin/showtime")
-    suspend fun createShowtime(@Body request: CreateShowtimeRequest): Response<BaseResponse<ShowtimeInfo>>
+    suspend fun createShowtime(@Body request: CreateShowtimeRequest): Response<BaseResponse<Unit>>
 
     @PUT("api/v1/admin/showtime")
-    suspend fun updateShowtime(@Body request: UpdateShowtimeRequest): Response<BaseResponse<ShowtimeInfo>>
+    suspend fun updateShowtime(@Body request: UpdateShowtimeRequest): Response<BaseResponse<Unit>>
 
     @DELETE("api/v1/admin/showtime/{showtimeId}")
     suspend fun deleteShowtime(@Path("showtimeId") showtimeId: Long): Response<BaseResponse<Unit>>
 
     // Admin Vouchers
     @GET("api/v1/admin/vouchers")
-    suspend fun getAllVouchers(@Query("page") page: Int = 0): Response<BaseResponse<List<VoucherItem>>>
+    suspend fun getAllVouchers(@Query("page") page: Int = 0): Response<BaseResponse<SliceResponse<VoucherItem>>>
 
     @GET("api/v1/admin/vouchers/{voucherId}")
     suspend fun getVoucherDetail(@Path("voucherId") voucherId: Long): Response<BaseResponse<VoucherItem>>
@@ -223,6 +233,38 @@ interface ApiService {
     @POST("api/v1/admin/holiday/update")
     suspend fun updateHoliday(@Body request: Holiday): Response<BaseResponse<Holiday>>
 
-    @DELETE("api/v1/admin/holiday/delete")
+    @HTTP(method = "DELETE", path = "api/v1/admin/holiday/delete", hasBody = true)
     suspend fun deleteHoliday(@Body request: DeleteHolidayRequest): Response<BaseResponse<Unit>>
+
+    // Admin Food
+    @GET("api/v1/admin/food")
+    suspend fun getAdminFoods(): Response<BaseResponse<List<FoodItem>>>
+
+    @POST("api/v1/admin/food")
+    suspend fun createFood(@Body request: FoodItem): Response<BaseResponse<FoodItem>>
+
+    @PUT("api/v1/admin/food/{id}")
+    suspend fun updateFood(@Path("id") id: Long, @Body request: FoodItem): Response<BaseResponse<FoodItem>>
+
+    @DELETE("api/v1/admin/food/{id}")
+    suspend fun deleteFood(@Path("id") id: Long): Response<BaseResponse<Unit>>
+
+    // Admin Promotions
+    @GET("api/v1/admin/promotions")
+    suspend fun getAdminPromotions(@Query("page") page: Int = 0): Response<BaseResponse<SliceResponse<AdminPromotionItem>>>
+
+    @GET("api/v1/admin/promotions/{id}")
+    suspend fun getAdminPromotionDetail(@Path("id") id: Long): Response<BaseResponse<AdminPromotionDetail>>
+
+    @POST("api/v1/admin/promotions")
+    suspend fun createPromotion(@Body request: CreateOrUpdatePromotionRequest): Response<BaseResponse<AdminPromotionDetail>>
+
+    @PUT("api/v1/admin/promotions/{id}")
+    suspend fun updatePromotion(
+        @Path("id") id: Long,
+        @Body request: CreateOrUpdatePromotionRequest
+    ): Response<BaseResponse<AdminPromotionDetail>>
+
+    @DELETE("api/v1/admin/promotions/{id}")
+    suspend fun deletePromotion(@Path("id") id: Long): Response<BaseResponse<Unit>>
 }

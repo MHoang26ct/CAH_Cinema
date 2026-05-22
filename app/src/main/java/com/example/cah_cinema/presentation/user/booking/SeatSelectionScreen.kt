@@ -3,8 +3,10 @@ package com.example.cah_cinema.presentation.user.booking
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -138,23 +140,71 @@ fun SeatGridSection(
     seats: List<Seat>,
     onSeatClick: (Seat) -> Unit
 ) {
-    val rows = seats.groupBy { it.row }
-    
+    // Nhóm theo tọa độ row (số thực), giữ thứ tự
+    val rows = seats.groupBy { it.row }.toSortedMap()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         rows.forEach { (_, rowSeats) ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                rowSeats.forEach { seat ->
-                    SeatItem(seat = seat, onClick = { onSeatClick(seat) })
-                    Spacer(modifier = Modifier.width(4.dp))
+            val sortedRow = rowSeats.sortedBy { it.col }
+            // Kiểm tra hàng này có phải aisle ngang không (tất cả ghế đều là aisle)
+            val isHorizontalAisle = sortedRow.all { it.isAisle || it.rowLabel == null }
+
+            if (isHorizontalAisle) {
+                // Lối đi ngang: khoảng trống nhỏ
+                Spacer(modifier = Modifier.height(8.dp))
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Label hàng bên trái
+                    val rowLabel = sortedRow.firstOrNull { it.rowLabel != null }?.rowLabel ?: ""
+                    Text(
+                        text = rowLabel,
+                        color = Color.White.copy(alpha = 0.4f),
+                        fontSize = 9.sp,
+                        modifier = Modifier.width(14.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+
+                    // Render từng ghế/aisle trong hàng
+                    var i = 0
+                    while (i < sortedRow.size) {
+                        val seat = sortedRow[i]
+                        if (seat.colLabel == null) {
+                            // Lối đi dọc
+                            Spacer(modifier = Modifier.width(10.dp))
+                            i++
+                        } else if (seat.type == SeatType.COUPLE) {
+                            // Ghế đôi: render 2 ghế liền nhau như 1 khối
+                            val nextSeat = if (i + 1 < sortedRow.size) sortedRow[i + 1] else null
+                            if (nextSeat != null && nextSeat.type == SeatType.COUPLE && nextSeat.colLabel != null) {
+                                CoupleSeatItem(
+                                    seat1 = seat,
+                                    seat2 = nextSeat,
+                                    onClick = {
+                                        onSeatClick(seat)
+                                        onSeatClick(nextSeat)
+                                    }
+                                )
+                                i += 2
+                            } else {
+                                SeatItem(seat = seat, onClick = { onSeatClick(seat) })
+                                i++
+                            }
+                        } else {
+                            SeatItem(seat = seat, onClick = { onSeatClick(seat) })
+                            i++
+                        }
+                        Spacer(modifier = Modifier.width(3.dp))
+                    }
                 }
             }
         }
@@ -162,7 +212,45 @@ fun SeatGridSection(
 }
 
 @Composable
+fun CoupleSeatItem(seat1: Seat, seat2: Seat, onClick: () -> Unit) {
+    val status = if (seat1.status == SeatStatus.SELECTED || seat2.status == SeatStatus.SELECTED)
+        SeatStatus.SELECTED
+    else seat1.status
+
+    val backgroundColor = when (status) {
+        SeatStatus.SELECTED -> Color(0xFF00E5FF)
+        SeatStatus.TAKEN_BY_OTHERS -> Color(0xFFB71C1C)
+        SeatStatus.BOOKED -> Color(0xFF26262E)
+        SeatStatus.MAINTENANCE -> Color(0xFF757575)
+        else -> Color(0xFFC2185B)
+    }
+
+    Box(
+        modifier = Modifier
+            .width(42.dp)
+            .height(19.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(backgroundColor)
+            .clickable(enabled = status == SeatStatus.AVAILABLE || status == SeatStatus.SELECTED) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "${seat1.colLabel}${seat2.colLabel}",
+            color = if (status == SeatStatus.SELECTED) Color.Black else Color.White,
+            fontSize = 7.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
 fun SeatItem(seat: Seat, onClick: () -> Unit) {
+    if (seat.isAisle) {
+        // Lối đi: không render gì, chỉ là khoảng trống
+        Spacer(modifier = Modifier.width(10.dp))
+        return
+    }
+
     val backgroundColor = when (seat.status) {
         SeatStatus.SELECTED -> Color(0xFF00E5FF)
         SeatStatus.TAKEN_BY_OTHERS -> Color(0xFFB71C1C)
@@ -172,32 +260,24 @@ fun SeatItem(seat: Seat, onClick: () -> Unit) {
             SeatType.REGULAR -> Color(0xFF2E7D32)
             SeatType.VIP -> Color(0xFFD87D4A)
             SeatType.COUPLE -> Color(0xFFC2185B)
+            SeatType.AISLE -> Color.Transparent
         }
     }
 
     Box(
         modifier = Modifier
-            .size(if (seat.type == SeatType.COUPLE) 44.dp else 19.dp, 19.dp)
+            .size(19.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(backgroundColor)
-            .clickable { onClick() },
+            .clickable(enabled = seat.status == SeatStatus.AVAILABLE || seat.status == SeatStatus.SELECTED) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        if (seat.type != SeatType.COUPLE) {
-            Text(
-                text = seat.name,
-                color = if (seat.status == SeatStatus.SELECTED) Color.Black else Color.White,
-                fontSize = 7.sp,
-                fontWeight = FontWeight.Bold
-            )
-        } else {
-            Text(
-                text = seat.number,
-                color = Color.White,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Text(
+            text = seat.name,
+            color = if (seat.status == SeatStatus.SELECTED) Color.Black else Color.White,
+            fontSize = 6.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 

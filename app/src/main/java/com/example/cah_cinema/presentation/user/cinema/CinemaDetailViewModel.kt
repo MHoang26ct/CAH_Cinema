@@ -19,6 +19,8 @@ import java.util.*
 
 data class CinemaDetailState(
     val cinemaName: String = "",
+    val cinemaAddress: String = "",
+    val cinemaImageUrl: String? = null,
     val availableDates: List<MovieDate> = emptyList(),
     val moviesWithShowtimes: List<Pair<Movie, List<Showtime>>> = emptyList(),
     val isLoading: Boolean = false,
@@ -35,7 +37,30 @@ class CinemaDetailViewModel(
 
     init {
         setupDates()
+        loadCinemaInfo()
         loadCinemaShowtimes()
+    }
+
+    private fun loadCinemaInfo() {
+        val targetId = cinemaId?.toLongOrNull() ?: return
+        viewModelScope.launch {
+            try {
+                // Sử dụng getCinemas rồi filter vì hiện chưa có public getCinemaDetail
+                val response = RetrofitClient.apiService.getCinemas()
+                if (response.isSuccessful) {
+                    val cinemaList: List<com.example.cah_cinema.data.model.CinemaItem>? = response.body()?.data
+                    cinemaList?.forEach { cinema ->
+                        if (cinema.id == targetId) {
+                            _state.update { s -> s.copy(
+                                cinemaName = cinema.name,
+                                cinemaAddress = cinema.address,
+                                cinemaImageUrl = cinema.imageUrl
+                            ) }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     private fun setupDates() {
@@ -62,6 +87,7 @@ class CinemaDetailViewModel(
         val selectedDate = _state.value.availableDates.find { it.isSelected }?.date ?: ""
         
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+        // date có dạng "dd/MM" từ setupDates()
         val parts = selectedDate.split("/")
         val apiDate = if (parts.size == 2) "$currentYear-${parts[1]}-${parts[0]}" else ""
 

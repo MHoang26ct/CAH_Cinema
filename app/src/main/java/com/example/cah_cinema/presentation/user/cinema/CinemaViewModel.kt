@@ -52,7 +52,8 @@ class CinemaViewModel : ViewModel() {
             id = this.id.toString(),
             name = this.name,
             address = this.address,
-            phone = this.hotline
+            phone = this.hotline,
+            imageUrl = this.imageUrl ?: ""
         )
     }
 

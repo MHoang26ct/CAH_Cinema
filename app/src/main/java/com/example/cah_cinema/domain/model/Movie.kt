@@ -14,7 +14,8 @@ data class Movie(
     val cast: String = "",
     val description: String = "",
     val bannerUrl: String = "",
-    val isUpcoming: Boolean = false
+    val isUpcoming: Boolean = false,
+    val trailerUrl: String? = null
 )
 
 data class Showtime(

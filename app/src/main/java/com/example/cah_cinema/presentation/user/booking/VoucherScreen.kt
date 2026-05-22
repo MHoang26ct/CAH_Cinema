@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.data.model.VoucherItem
 import com.example.cah_cinema.ui.theme.CyanBlue
+import com.example.cah_cinema.presentation.user.booking.formatPrice
+import com.example.cah_cinema.presentation.user.booking.VoucherViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +29,8 @@ fun VoucherScreen(
     currentTotal: Double,
     viewModel: VoucherViewModel = viewModel(),
     onBackClick: () -> Unit,
-    onConfirm: (String, Double) -> Unit
+    // code, voucherId, discountAmount
+    onConfirm: (String, Long, Double) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     var selectedVoucher by remember { mutableStateOf<VoucherItem?>(null) }
@@ -46,7 +49,7 @@ fun VoucherScreen(
             )
         },
         bottomBar = {
-            if (selectedVoucher != null) {
+            selectedVoucher?.let { voucher ->
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -54,10 +57,10 @@ fun VoucherScreen(
                         .padding(16.dp)
                         .navigationBarsPadding()
                 ) {
-                    val discount = if (selectedVoucher!!.type == "PERCENT") {
-                        (currentTotal * selectedVoucher!!.value / 100).coerceAtMost(selectedVoucher!!.maxDiscount ?: Double.MAX_VALUE)
+                    val discount = if (voucher.type == "PERCENT") {
+                        (currentTotal * voucher.value / 100).coerceAtMost(voucher.maxDiscount ?: Double.MAX_VALUE)
                     } else {
-                        selectedVoucher!!.value
+                        voucher.value
                     }
 
                     Row(
@@ -77,7 +80,7 @@ fun VoucherScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { onConfirm(selectedVoucher!!.code, discount) },
+                        onClick = { onConfirm(voucher.code, voucher.id, discount) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
                         shape = RoundedCornerShape(12.dp)
@@ -89,7 +92,7 @@ fun VoucherScreen(
         }
     ) { paddingValues ->
         if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = CyanBlue)
             }
         } else {
@@ -101,10 +104,11 @@ fun VoucherScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(state.vouchers) { voucher ->
-                    val isEligible = currentTotal >= voucher.minOrderValue
+                    val minVal = voucher.minOrderValue ?: 0.0
+                    val isEligible = currentTotal >= minVal
                     VoucherRowItem(
                         voucher = voucher,
-                        isSelected = selectedVoucher?.id == voucher.id,
+                        isSelected = (selectedVoucher?.id == voucher.id),
                         isEligible = isEligible,
                         onSelect = { if (isEligible) selectedVoucher = voucher }
                     )
@@ -146,8 +150,9 @@ fun VoucherRowItem(
                     fontSize = 12.sp
                 )
                 if (!isEligible) {
+                    val minVal = voucher.minOrderValue ?: 0.0
                     Text(
-                        text = "Chưa đủ điều kiện (Tối thiểu ${formatPrice(voucher.minOrderValue)})",
+                        text = "Chưa đủ điều kiện (Tối thiểu ${formatPrice(minVal)})",
                         color = Color.Red.copy(alpha = 0.7f),
                         fontSize = 11.sp
                     )

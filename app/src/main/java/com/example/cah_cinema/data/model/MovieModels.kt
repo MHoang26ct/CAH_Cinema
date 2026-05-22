@@ -8,6 +8,11 @@ data class MoviePageData(
     @SerializedName("totalPages") val totalPages: Int
 )
 
+data class FeaturedMoviesData(
+    @SerializedName("nowShowing") val nowShowing: List<MovieListItem>,
+    @SerializedName("upcoming") val upcoming: List<MovieListItem>
+)
+
 data class MovieListItem(
     @SerializedName("movieId") val id: Long,
     @SerializedName("title") val title: String,
@@ -38,4 +43,38 @@ data class Genre(
 data class PreLockRequest(
     @SerializedName("showtimeId") val showtimeId: Long,
     @SerializedName("seatIds") val seatIds: List<Long>
+)
+
+/**
+ * Response cho GET /api/v1/public/showtimes/movies/{movieId}
+ * Khớp với MovieShowtimesResponseDTO của backend — là một object, không phải List.
+ */
+data class MovieShowtimesResponse(
+    @SerializedName("movie") val movie: MovieShowtimeMovieInfo?,
+    @SerializedName("cinemas") val cinemas: List<MovieShowtimeItem>
+)
+
+data class MovieShowtimeMovieInfo(
+    @SerializedName("movieId") val id: Long,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String?
+)
+
+data class MovieShowtimeItem(
+    @SerializedName("cinemaId") val cinemaId: Long,
+    @SerializedName("cinemaName") val cinemaName: String,
+    @SerializedName("address") val address: String,
+    @SerializedName("showtimes") val showtimes: List<ShowtimeInfo>
+)
+
+data class ShowtimeInfo(
+    @SerializedName("showtimeId") val id: Long,
+    @SerializedName("movieId") val movieId: Long? = null,
+    @SerializedName("roomId") val roomId: Long? = null,
+    @SerializedName("startTime") val startTime: String,
+    @SerializedName("endTime") val endTime: String,
+    @SerializedName("format") val format: String,
+    @SerializedName("basePrice") val basePrice: Double,
+    @SerializedName("status") val status: String,
+    @SerializedName("roomName") val roomName: String
 )

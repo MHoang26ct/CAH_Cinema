@@ -1,7 +1,6 @@
 package com.example.cah_cinema.presentation.user.profile
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,9 +36,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
@@ -71,26 +78,74 @@ fun ProfileScreen(
     onLogout: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        ProfileContent(
-            state = state,
-            onEvent = { event ->
-                viewModel.onEvent(event)
-                when (event) {
-                    ProfileEvent.ChangePassword -> onNavigateToChangePassword()
-                    ProfileEvent.EditProfile -> onNavigateToEditProfile()
-                    ProfileEvent.ViewAllTickets -> onNavigateToAllTickets()
-                    ProfileEvent.ViewTicketDetail -> onNavigateToTicketDetail()
-                    ProfileEvent.Logout -> onLogout()
-                    else -> {}
+    // Tải lại dữ liệu mỗi khi màn hình hiển thị
+    LaunchedEffect(Unit) {
+        viewModel.loadProfileData()
+    }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearErrorMessage()
+        }
+    }
+
+    // Dialog xác nhận xóa tài khoản
+    if (state.showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onEvent(ProfileEvent.CancelDeleteAccount) },
+            title = { Text("Xóa tài khoản", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Bạn có chắc muốn xóa tài khoản? Hành động này không thể hoàn tác.",
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.onEvent(ProfileEvent.ConfirmDeleteAccount)
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) { Text("XÓA", color = Color.White, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onEvent(ProfileEvent.CancelDeleteAccount) }) {
+                    Text("HỦY", color = Color.White.copy(alpha = 0.6f))
                 }
             },
-            onAdminClick = onNavigateToAdmin
+            containerColor = Color(0xFF21212B)
         )
+    }
 
-        if (state.isLoading) {
-            FullScreenLoading()
+    Scaffold(
+        containerColor = Color(0xFF13131A),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
+            ProfileContent(
+                state = state,
+                onEvent = { event ->
+                    when (event) {
+                        ProfileEvent.ChangePassword -> onNavigateToChangePassword()
+                        ProfileEvent.EditProfile -> onNavigateToEditProfile()
+                        ProfileEvent.ViewAllTickets -> onNavigateToAllTickets()
+                        ProfileEvent.ViewTicketDetail -> onNavigateToTicketDetail()
+                        ProfileEvent.Logout -> onLogout()
+                        else -> viewModel.onEvent(event)
+                    }
+                },
+                onAdminClick = onNavigateToAdmin
+            )
+
+            if (state.isLoading) {
+                FullScreenLoading()
+            }
         }
     }
 }

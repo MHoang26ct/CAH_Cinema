@@ -1,0 +1,4 @@
+## Cloudinary Configuration
+## Copy file này thành local.properties và điền thông tin thực
+CLOUDINARY_CLOUD_NAME=dqtnz9dhw
+CLOUDINARY_UPLOAD_PRESET=cinema
