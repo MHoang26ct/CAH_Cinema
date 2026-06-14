@@ -28,7 +28,7 @@ data class Cinema(
     val id: String,
     val name: String,
     val address: String,
-    val imageUrl: String = "",
+    val imageUrl: String? = null,
     val phone: String = "",
     val showtimes: List<Showtime> = emptyList()
 )

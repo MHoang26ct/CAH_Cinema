@@ -1,5 +1,6 @@
 package com.example.cah_cinema.presentation.user.cinema
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -149,14 +150,30 @@ fun CinemaItemCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = cinema.imageUrl,
-                contentDescription = null,
+            // Ảnh rạp với fallback icon khi imageUrl null/rỗng
+            Box(
                 modifier = Modifier
                     .size(106.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF1C1C22)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!cinema.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = cinema.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.LocationCity,
+                        contentDescription = null,
+                        tint = CyanBlue.copy(alpha = 0.6f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.width(12.dp))
             

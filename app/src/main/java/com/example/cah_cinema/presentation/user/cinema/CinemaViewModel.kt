@@ -53,7 +53,7 @@ class CinemaViewModel : ViewModel() {
             name = this.name,
             address = this.address,
             phone = this.hotline,
-            imageUrl = this.imageUrl ?: ""
+            imageUrl = this.imageUrl  // nullable — null khi backend chưa set
         )
     }
 
