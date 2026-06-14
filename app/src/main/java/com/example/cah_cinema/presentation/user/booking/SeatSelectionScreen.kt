@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,10 +38,18 @@ fun SeatSelectionScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.errorMessage) {
-        state.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
+        // Chỉ show Snackbar (và clear) cho lỗi tạm thời (click ghế không hợp lệ, v.v.)
+        // Khi seats trống, giữ errorMessage để hiển thị inline trên màn hình
+        if (state.errorMessage != null && state.seats.isNotEmpty()) {
+            snackbarHostState.showSnackbar(state.errorMessage!!)
             viewModel.clearErrorMessage()
         }
+    }
+
+    // Unlock ghế khi user back ra (hủy chọn ghế)
+    val handleBack = {
+        viewModel.unlockAllSelectedSeats()
+        onBackClick()
     }
 
     Scaffold(
@@ -51,7 +60,8 @@ fun SeatSelectionScreen(
                 title = state.movie?.title ?: "",
                 tags = listOf(state.movie?.genre ?: "", state.movie?.format ?: "", state.movie?.age ?: ""),
                 showtime = state.selectedShowtime,
-                onBackClick = onBackClick
+                onBackClick = handleBack,
+                onRefreshSeats = { viewModel.refreshSeats() }
             )
         },
         bottomBar = {
@@ -59,10 +69,13 @@ fun SeatSelectionScreen(
                 totalTickets = state.selectedSeats.size,
                 totalAmount = totalAmount,
                 onBookClick = {
-                    onConfirmClick(selectedSeatIds, selectedSeatsDisplay, totalAmount)
+                    if (state.selectedSeats.isNotEmpty()) {
+                        onConfirmClick(selectedSeatIds, selectedSeatsDisplay, totalAmount)
+                    }
                 },
                 buttonText = "Chọn chỗ",
-                selectedSeatsDisplay = selectedSeatsDisplay
+                selectedSeatsDisplay = selectedSeatsDisplay,
+                enabled = state.selectedSeats.isNotEmpty()
             )
         }
     ) { paddingValues ->
@@ -90,10 +103,43 @@ fun SeatSelectionScreen(
             }
 
             item {
-                SeatGridSection(
-                    seats = state.seats,
-                    onSeatClick = { viewModel.onSeatClick(it) }
-                )
+                if (state.isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color(0xFF00E5FF))
+                    }
+                } else if (state.seats.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "⚠️",
+                            fontSize = 36.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = state.errorMessage
+                                ?: "Phòng chiếu chưa có sơ đồ ghế.\nVui lòng chọn suất chiếu khác hoặc liên hệ rạp.",
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 22.sp
+                        )
+                    }
+                } else {
+                    SeatGridSection(
+                        seats = state.seats,
+                        onSeatClick = { viewModel.onSeatClick(it) }
+                    )
+                }
                 Spacer(modifier = Modifier.height(24.dp))
             }
 

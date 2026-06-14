@@ -114,6 +114,18 @@ data class CreateSeatRequest(
     @SerializedName("seatTypeId") val seatTypeId: Long
 )
 
+data class ReplaceSeatMapRequest(
+    @SerializedName("roomId") val roomId: Long,
+    @SerializedName("seats") val seats: List<CreateSeatRequest>
+)
+
+data class CancelShowtimesByRoomRequest(
+    @SerializedName("roomId") val roomId: Long,
+    @SerializedName("fromDate") val fromDate: String, // yyyy-MM-dd
+    @SerializedName("toDate") val toDate: String,
+    @SerializedName("reason") val reason: String? = null
+)
+
 // Config & Holiday Models
 data class PriceConfig(
     @SerializedName("configId") val id: Long? = null,
@@ -136,34 +148,36 @@ data class DeleteHolidayRequest(
 
 // Promotion Admin Models
 data class AdminPromotionItem(
-    @SerializedName("id") val id: Long,
+    @SerializedName("id", alternate = ["promotionId"]) val id: Long,
     @SerializedName("title") val title: String,
-    @SerializedName("description") val description: String?,
-    @SerializedName("imageUrl") val imageUrl: String?,
-    @SerializedName("startAt") val startAt: String?,
-    @SerializedName("expiredAt") val expiredAt: String?,
-    @SerializedName("isActive") val isActive: Boolean
+    @SerializedName("shortDescription", alternate = ["description"]) val description: String?,
+    @SerializedName("imageUrl", alternate = ["image_url"]) val imageUrl: String?,
+    @SerializedName("startAt", alternate = ["start_at", "startDate"]) val startAt: String?,
+    @SerializedName("expiredAt", alternate = ["expired_at", "endDate"]) val expiredAt: String?,
+    @SerializedName("isActive", alternate = ["is_active"]) val isActive: Boolean,
+    @SerializedName("createdAt", alternate = ["created_at"]) val createdAt: String? = null
 )
 
 data class AdminPromotionDetail(
-    @SerializedName("id") val id: Long,
+    @SerializedName("id", alternate = ["promotionId"]) val id: Long,
     @SerializedName("title") val title: String,
-    @SerializedName("description") val description: String?,
-    @SerializedName("imageUrl") val imageUrl: String?,
-    @SerializedName("conditions") val conditions: String?, // JSON array string
-    @SerializedName("notes") val notes: String?, // JSON array string
-    @SerializedName("startAt") val startAt: String?,
-    @SerializedName("expiredAt") val expiredAt: String?,
-    @SerializedName("isActive") val isActive: Boolean
+    @SerializedName("shortDescription", alternate = ["description"]) val description: String?,
+    @SerializedName("imageUrl", alternate = ["image_url"]) val imageUrl: String?,
+    @SerializedName("conditions") val conditions: String?, // Chuỗi thô tách bằng @
+    @SerializedName("note", alternate = ["notes"]) val notes: String?, // Chuỗi thô tách bằng @
+    @SerializedName("startAt", alternate = ["start_at", "startDate"]) val startAt: String?,
+    @SerializedName("expiredAt", alternate = ["expired_at", "endDate"]) val expiredAt: String?,
+    @SerializedName("isActive", alternate = ["is_active"]) val isActive: Boolean,
+    @SerializedName("createdAt", alternate = ["created_at"]) val createdAt: String? = null
 )
 
 data class CreateOrUpdatePromotionRequest(
     @SerializedName("title") val title: String,
-    @SerializedName("description") val description: String?,
-    @SerializedName("imageUrl") val imageUrl: String?,
-    @SerializedName("conditions") val conditions: List<String>?,
-    @SerializedName("notes") val notes: List<String>?,
-    @SerializedName("startAt") val startAt: String?, // yyyy-MM-dd
-    @SerializedName("expiredAt") val expiredAt: String?, // yyyy-MM-dd
-    @SerializedName("isActive") val isActive: Boolean = true
+    @SerializedName("shortDescription", alternate = ["description"]) val description: String?,
+    @SerializedName("imageUrl", alternate = ["image_url"]) val imageUrl: String?,
+    @SerializedName("conditions") val conditions: String?, // Gửi chuỗi nối bằng @
+    @SerializedName("note", alternate = ["notes"]) val notes: String?, // Gửi chuỗi nối bằng @
+    @SerializedName("startDate", alternate = ["startAt", "start_at"]) val startAt: String?, // yyyy-MM-dd
+    @SerializedName("endDate", alternate = ["expiredAt", "expired_at"]) val expiredAt: String?, // yyyy-MM-dd
+    @SerializedName("isActive", alternate = ["is_active"]) val isActive: Boolean = true
 )

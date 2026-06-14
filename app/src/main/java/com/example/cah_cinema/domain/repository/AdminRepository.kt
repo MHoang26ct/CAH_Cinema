@@ -28,9 +28,12 @@ interface AdminRepository {
 
     // Showtimes
     suspend fun getShowtimesByCinema(cinemaId: Long, date: String): BaseResponse<List<CinemaShowtimeItem>>?
+    suspend fun getShowtimesByRoom(roomId: Long, date: String): BaseResponse<List<ShowtimeInfo>>?
     suspend fun createShowtime(request: CreateShowtimeRequest): BaseResponse<Unit>?
     suspend fun updateShowtime(request: UpdateShowtimeRequest): BaseResponse<Unit>?
     suspend fun deleteShowtime(id: Long): BaseResponse<Unit>?
+    suspend fun cancelShowtimesByRoom(request: CancelShowtimesByRoomRequest): BaseResponse<Unit>?
+    suspend fun getShowtimeSeats(showtimeId: Long): BaseResponse<List<SeatItem>>?
 
     // Vouchers
     suspend fun getAllVouchers(page: Int): BaseResponse<SliceResponse<VoucherItem>>?
@@ -48,7 +51,9 @@ interface AdminRepository {
     suspend fun deleteHoliday(holidayId: Long): BaseResponse<Unit>?
 
     // Seats
+    suspend fun getSeatsByRoom(roomId: Long): BaseResponse<List<SeatItem>>?
     suspend fun createSeats(request: List<CreateSeatRequest>): BaseResponse<Unit>?
+    suspend fun replaceSeatMap(request: ReplaceSeatMapRequest): BaseResponse<Unit>?
     suspend fun deleteSeatsByRoom(roomId: Long): BaseResponse<Unit>?
 
     // Food

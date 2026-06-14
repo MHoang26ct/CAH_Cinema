@@ -1,6 +1,7 @@
 package com.example.cah_cinema.data.remote
 
 import com.example.cah_cinema.data.model.*
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -89,18 +90,37 @@ interface ApiService {
     @POST("api/v1/bookings")
     suspend fun createBooking(@Body request: CreateBookingRequest): Response<BaseResponse<BookingData>>
 
-    @POST("api/v1/bookings/{bookingId}/confirm-payment")
-    suspend fun confirmPayment(
+    @GET("api/v1/bookings/{bookingId}")
+    suspend fun getBookingStatus(@Path("bookingId") bookingId: Long): Response<BaseResponse<BookingData>>
+
+    @POST("api/v1/bookings/{bookingId}/momo/pay")
+    suspend fun createMoMoPayment(
         @Path("bookingId") bookingId: Long,
-        @Body request: ConfirmPaymentRequest
-    ): Response<BaseResponse<Unit>>
+        @Body request: MoMoPaymentRequest
+    ): Response<BaseResponse<MoMoPaymentResponse>>
+
+    @POST("api/v1/bookings/{bookingId}/vnpay/pay")
+    suspend fun createVNPayPayment(
+        @Path("bookingId") bookingId: Long,
+        @Body request: VNPayPaymentRequest
+    ): Response<BaseResponse<VNPayPaymentResponse>>
 
     // 6. Vouchers & Food
-    @GET("api/v1/user/vouchers")
+    @GET("api/v1/vouchers")
     suspend fun getMyVouchers(): Response<BaseResponse<List<VoucherItem>>>
 
-    @GET("api/v1/user/food")
+    @GET("api/v1/foods")
     suspend fun getFoods(): Response<BaseResponse<List<FoodItem>>>
+
+    // 11. Promotions (Public)
+    @GET("api/v1/public/promotions")
+    suspend fun getPublicPromotions(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 9
+    ): Response<BaseResponse<SliceResponse<AdminPromotionItem>>>
+
+    @GET("api/v1/public/promotions/{id}")
+    suspend fun getPublicPromotionDetail(@Path("id") id: Long): Response<BaseResponse<AdminPromotionDetail>>
 
     // 9. Profile
     @GET("api/v1/users/me")
@@ -108,6 +128,36 @@ interface ApiService {
 
     @PATCH("api/v1/users/me")
     suspend fun updateMyProfile(@Body request: UpdateProfileRequest): Response<BaseResponse<UserInfo>>
+
+    // 12. Comments
+    @GET("api/v1/public/comments/movies/{movieId}")
+    suspend fun getMovieComments(
+        @Path("movieId") movieId: Long,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 10
+    ): Response<BaseResponse<SliceResponse<CommentItem>>>
+
+    @POST("api/v1/comments/movies/{movieId}")
+    suspend fun createMovieComment(
+        @Path("movieId") movieId: Long,
+        @Body request: CreateCommentRequest
+    ): Response<BaseResponse<CommentItem>>
+
+    @DELETE("api/v1/comments/{commentId}")
+    suspend fun deleteMovieComment(
+        @Path("commentId") commentId: Long
+    ): Response<BaseResponse<Unit>>
+
+    // --- STAFF/ADMIN ENDPOINTS ---
+
+    @POST("api/v1/staff/bookings/{bookingId}/confirm-payment")
+    suspend fun confirmPaymentManual(
+        @Path("bookingId") bookingId: Long,
+        @Body request: ConfirmPaymentRequest
+    ): Response<BaseResponse<Unit>>
+
+    @POST("api/v1/staff/tickets/check-in")
+    suspend fun checkInTicket(@Body request: CheckInRequest): Response<BaseResponse<CheckInResponse>>
 
     // --- ADMIN ENDPOINTS ---
 
@@ -193,6 +243,15 @@ interface ApiService {
     @DELETE("api/v1/admin/showtime/{showtimeId}")
     suspend fun deleteShowtime(@Path("showtimeId") showtimeId: Long): Response<BaseResponse<Unit>>
 
+    @POST("api/v1/admin/showtime/cancel-by-room")
+    suspend fun cancelShowtimesByRoom(@Body request: CancelShowtimesByRoomRequest): Response<BaseResponse<Unit>>
+
+    @GET("api/v1/admin/showtime/rooms/{roomId}")
+    suspend fun getShowtimesByRoom(
+        @Path("roomId") roomId: Long,
+        @Query("date") date: String // yyyy-MM-dd
+    ): Response<BaseResponse<List<ShowtimeInfo>>>
+
     // Admin Vouchers
     @GET("api/v1/admin/vouchers")
     suspend fun getAllVouchers(@Query("page") page: Int = 0): Response<BaseResponse<SliceResponse<VoucherItem>>>
@@ -212,6 +271,12 @@ interface ApiService {
     // Admin Seats
     @POST("api/v1/admin/seats/create")
     suspend fun createSeats(@Body request: List<CreateSeatRequest>): Response<BaseResponse<Unit>>
+
+    @GET("api/v1/admin/seats/rooms/{roomId}")
+    suspend fun getAdminSeatsByRoom(@Path("roomId") roomId: Long): Response<BaseResponse<List<SeatItem>>>
+
+    @PUT("api/v1/admin/seats/replace")
+    suspend fun replaceSeatMap(@Body request: ReplaceSeatMapRequest): Response<BaseResponse<Unit>>
 
     @DELETE("api/v1/admin/seats/delete/{roomId}")
     suspend fun deleteSeatsByRoom(@Path("roomId") roomId: Long): Response<BaseResponse<Unit>>
@@ -267,4 +332,20 @@ interface ApiService {
 
     @DELETE("api/v1/admin/promotions/{id}")
     suspend fun deletePromotion(@Path("id") id: Long): Response<BaseResponse<Unit>>
+
+    // Promotions (RAW) — backend có thể trả Page/object trực tiếp (không bọc BaseResponse)
+    @GET("api/v1/admin/promotions")
+    suspend fun getAdminPromotionsRaw(@Query("page") page: Int = 0): Response<ResponseBody>
+
+    @GET("api/v1/admin/promotions/{id}")
+    suspend fun getAdminPromotionDetailRaw(@Path("id") id: Long): Response<ResponseBody>
+
+    @POST("api/v1/admin/promotions")
+    suspend fun createPromotionRaw(@Body request: CreateOrUpdatePromotionRequest): Response<ResponseBody>
+
+    @PUT("api/v1/admin/promotions/{id}")
+    suspend fun updatePromotionRaw(
+        @Path("id") id: Long,
+        @Body request: CreateOrUpdatePromotionRequest
+    ): Response<ResponseBody>
 }

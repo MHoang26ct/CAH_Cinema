@@ -1,5 +1,6 @@
 package com.example.cah_cinema.presentation.user.detail
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,9 +8,7 @@ import com.example.cah_cinema.domain.model.Cinema
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.MovieDate
 import com.example.cah_cinema.domain.model.Showtime
-import com.example.cah_cinema.data.model.MovieDetail
-import com.example.cah_cinema.data.model.MovieShowtimeItem
-import com.example.cah_cinema.data.model.ShowtimeInfo
+import com.example.cah_cinema.data.model.*
 import com.example.cah_cinema.data.remote.RetrofitClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +25,14 @@ data class MovieDetailState(
     val cinemas: List<Cinema> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    
+    // Comments
+    val comments: List<CommentItem> = emptyList(),
+    val isCommentsLoading: Boolean = false,
+    val commentText: String = "",
+    val isSubmittingComment: Boolean = false,
+    val canLoadMoreComments: Boolean = false,
+    val currentCommentPage: Int = 0
 )
 
 class MovieDetailViewModel(
@@ -39,6 +46,7 @@ class MovieDetailViewModel(
     init {
         setupDates()
         loadMovieDetailAndShowtimes()
+        loadComments()
     }
 
     private fun setupDates() {
@@ -94,6 +102,105 @@ class MovieDetailViewModel(
         }
     }
 
+    fun loadComments(page: Int = 0) {
+        val id = movieId?.toLongOrNull() ?: return
+        if (page == 0) _state.update { it.copy(isCommentsLoading = true) }
+
+        viewModelScope.launch {
+            try {
+                Log.d("MovieDetail", "Loading comments for movie $id, page $page")
+                val response = RetrofitClient.apiService.getMovieComments(id, page = page, size = 5)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    Log.d("MovieDetail", "Comments Response Body: $body")
+                    val slice = body?.data
+                    val newComments = slice?.content ?: emptyList()
+                    Log.d("MovieDetail", "Loaded ${newComments.size} comments")
+                    _state.update { currentState ->
+                        currentState.copy(
+                            comments = if (page == 0) newComments else currentState.comments + newComments,
+                            canLoadMoreComments = slice?.last == false,
+                            currentCommentPage = page,
+                            isCommentsLoading = false
+                        )
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("MovieDetail", "Load comments failed: ${response.code()} - $errorBody")
+                    _state.update { it.copy(isCommentsLoading = false) }
+                }
+            } catch (e: Exception) {
+                Log.e("MovieDetail", "Exception loading comments", e)
+                _state.update { it.copy(isCommentsLoading = false) }
+            }
+        }
+    }
+
+    fun loadMoreComments() {
+        if (_state.value.canLoadMoreComments && !_state.value.isCommentsLoading) {
+            loadComments(_state.value.currentCommentPage + 1)
+        }
+    }
+
+    fun onCommentTextChange(newText: String) {
+        _state.update { it.copy(commentText = newText) }
+    }
+
+    fun submitComment() {
+        val id = movieId?.toLongOrNull() ?: return
+        val text = _state.value.commentText.trim()
+        if (text.isEmpty()) return
+
+        if (RetrofitClient.getToken() == null) {
+            _state.update { it.copy(errorMessage = "Bạn cần đăng nhập để bình luận") }
+            return
+        }
+
+        _state.update { it.copy(isSubmittingComment = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            try {
+                Log.d("MovieDetail", "Submitting comment for movie $id: $text")
+                val response = RetrofitClient.apiService.createMovieComment(id, CreateCommentRequest(text))
+                if (response.isSuccessful) {
+                    Log.d("MovieDetail", "Comment submitted successfully")
+                    // Refresh comments from page 0
+                    _state.update { it.copy(commentText = "", isSubmittingComment = false) }
+                    loadComments(0)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("MovieDetail", "Submit comment failed: ${response.code()} - $errorBody")
+                    val msg = if (response.code() == 401) "Vui lòng đăng nhập lại" else "Lỗi: ${response.message()}"
+                    _state.update { it.copy(isSubmittingComment = false, errorMessage = msg) }
+                }
+            } catch (e: Exception) {
+                Log.e("MovieDetail", "Exception submitting comment", e)
+                _state.update { it.copy(isSubmittingComment = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun deleteComment(commentId: Long) {
+        viewModelScope.launch {
+            try {
+                Log.d("MovieDetail", "Deleting comment $commentId")
+                val response = RetrofitClient.apiService.deleteMovieComment(commentId)
+                if (response.isSuccessful) {
+                    Log.d("MovieDetail", "Comment deleted")
+                    loadComments(0)
+                } else {
+                    Log.e("MovieDetail", "Delete comment failed: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("MovieDetail", "Exception deleting comment", e)
+            }
+        }
+    }
+    
+    fun clearErrorMessage() {
+        _state.update { it.copy(errorMessage = null) }
+    }
+
     private fun loadShowtimesForDate(date: String) {
         val id = movieId?.toLongOrNull() ?: return
 
@@ -142,7 +249,7 @@ class MovieDetailViewModel(
             name = this.cinemaName,
             address = this.address,
             showtimes = this.showtimes
-                .filter { it.status == "AVAILABLE" || it.status == "ACTIVE" || it.status == "SCHEDULED" }
+                .filter { it.status == "AVAILABLE" }
                 .map { it.toDomainShowtime() }
         )
     }

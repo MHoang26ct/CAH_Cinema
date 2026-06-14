@@ -1,6 +1,7 @@
 package com.example.cah_cinema
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,7 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,12 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
+
+                // Xử lý deep link khi VNPay/MoMo redirect về app
+                // URL: cahcinema://payment/result?vnp_ResponseCode=00&...
+                LaunchedEffect(intent) {
+                    handlePaymentDeepLink(intent, navController)
+                }
 
                 if (!isReady) return@CAH_CinemaTheme
 
@@ -569,6 +576,12 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // Xử lý deep link khi app đang chạy và nhận được intent mới (VNPay/MoMo redirect)
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
 }
 
 fun NavController.navigateToTab(route: String) {
@@ -577,4 +590,30 @@ fun NavController.navigateToTab(route: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+/**
+ * Xử lý deep link từ VNPay/MoMo khi redirect về app.
+ * VNPay trả về: cahcinema://payment/result?vnp_ResponseCode=00&vnp_TxnRef=...
+ * MoMo trả về:  cahcinema://payment/result?resultCode=0&orderId=...
+ *
+ * Polling trong PaymentViewModel sẽ tự detect PAID status — hàm này chỉ cần
+ * đưa user về đúng màn hình nếu app bị minimize.
+ */
+fun handlePaymentDeepLink(intent: android.content.Intent?, navController: NavController) {
+    val uri = intent?.data ?: return
+    if (uri.scheme != "cahcinema" || uri.host != "payment") return
+
+    Log.d("DeepLink", "Payment redirect received: $uri")
+
+    // VNPay: vnp_ResponseCode=00 là thành công
+    val vnpCode = uri.getQueryParameter("vnp_ResponseCode")
+    // MoMo: resultCode=0 là thành công
+    val momoCode = uri.getQueryParameter("resultCode")
+
+    val isSuccess = vnpCode == "00" || momoCode == "0"
+    Log.d("DeepLink", "Payment result: ${if (isSuccess) "SUCCESS" else "FAILED"} (vnp=$vnpCode, momo=$momoCode)")
+
+    // Polling trong PaymentViewModel tự xử lý việc cập nhật UI khi nhận PAID status.
+    // Deep link chỉ bring app về foreground — không cần navigate thêm.
 }

@@ -6,8 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.TicketType
 import com.example.cah_cinema.data.model.MovieDetail
-import com.example.cah_cinema.data.model.ShowtimeInfo
 import com.example.cah_cinema.data.remote.RetrofitClient
+import com.example.cah_cinema.util.DateTimeUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,11 +44,13 @@ class TicketSelectionViewModel(
         _state.update {
             it.copy(
                 selectedShowtime = timeArg,
-                selectedDate = dateArg
+                selectedDate = DateTimeUtils.navDateToDisplay(dateArg)
             )
         }
         loadData()
     }
+
+    fun getBasePrice(): Double = currentBasePrice
 
     private fun loadData() {
         val mId = movieId?.toLongOrNull() ?: return
@@ -68,62 +70,16 @@ class TicketSelectionViewModel(
                     return@launch
                 }
 
-                // Lấy thông tin showtime (cinemaName, roomName, basePrice) từ API showtimes theo ngày
-                // dateArg có thể là "dd/MM" hoặc "dd-MM" hoặc full ISO
-                val normalizedDate = dateArg.replace("-", "/")
-                val dateParts = normalizedDate.split("/")
-                
-                val apiDate = when {
-                    dateParts.size >= 3 -> {
-                        // Trường hợp full ISO hoặc dd/MM/yyyy: yyyy-MM-dd
-                        // Giả định dd/MM/yyyy -> yyyy-MM-dd
-                        if (dateParts[0].length == 4) "${dateParts[0]}-${dateParts[1]}-${dateParts[2]}"
-                        else "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}"
-                    }
-                    dateParts.size == 2 -> {
-                        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-                        "$currentYear-${dateParts[1]}-${dateParts[0]}"
-                    }
-                    else -> ""
-                }
-
-                var cinemaName = ""
-                var roomName = ""
-                var basePrice = 0.0
-                var otherShowtimes = listOf<String>()
-
-                if (apiDate.isNotEmpty()) {
-                    try {
-                        val showtimesResponse = RetrofitClient.apiService.getShowtimesByMovie(mId, apiDate)
-                        if (showtimesResponse.isSuccessful) {
-                            val data = showtimesResponse.body()?.data
-                            // Tìm cinema + showtime khớp với showtimeId
-                            data?.cinemas?.forEach { cinema ->
-                                val matchedShowtime = cinema.showtimes.find { it.id == stId }
-                                if (matchedShowtime != null) {
-                                    cinemaName = cinema.cinemaName
-                                    roomName = matchedShowtime.roomName
-                                    basePrice = matchedShowtime.basePrice
-                                    // Lấy tất cả suất chiếu cùng rạp trong ngày
-                                    otherShowtimes = cinema.showtimes.map { s ->
-                                        val timePart = s.startTime.split("T").getOrNull(1)?.substring(0, 5) ?: s.startTime
-                                        timePart
-                                    }
-                                }
-                            }
-                        }
-                    } catch (_: Exception) { /* Không block nếu lỗi showtimes */ }
-                }
-
-                currentBasePrice = basePrice
+                val context = loadBookingShowtimeContext(mId, stId, dateArg)
+                currentBasePrice = context.basePrice
 
                 _state.update {
                     it.copy(
-                        movie = movieDetail.toDomainMovie(),
-                        selectedCinemaName = cinemaName,
-                        selectedRoom = if (roomName.isNotEmpty()) "Phòng: $roomName" else "",
-                        availableShowtimes = otherShowtimes,
-                        ticketTypes = buildTicketTypes(basePrice),
+                        movie = context.movie ?: movieDetail.toDomainMovie(),
+                        selectedCinemaName = context.cinemaName,
+                        selectedRoom = if (context.roomName.isNotEmpty()) "Phòng: ${context.roomName}" else "",
+                        availableShowtimes = context.otherShowtimes,
+                        ticketTypes = buildTicketTypes(context.basePrice),
                         isLoading = false
                     )
                 }

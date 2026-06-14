@@ -22,10 +22,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.cah_cinema.data.model.CinemaItem
@@ -42,6 +45,18 @@ fun AdminCinemaManagementScreen(
     onNavigate: (String) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadCinemas()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCinema by remember { mutableStateOf<CinemaItem?>(null) }
     var showAddRoomDialog by remember { mutableStateOf<Long?>(null) } // CinemaId
@@ -105,8 +120,10 @@ fun AdminCinemaManagementScreen(
         AddRoomDialog(
             onDismiss = { showAddRoomDialog = null },
             onConfirm = { roomName ->
-                viewModel.createRoom(showAddRoomDialog!!, roomName) {
+                viewModel.createRoom(showAddRoomDialog!!, roomName) { newRoomId ->
                     showAddRoomDialog = null
+                    // Navigate thẳng sang thiết kế sơ đồ ghế cho phòng vừa tạo
+                    onNavigate(Screen.AdminSeatManagement.createRoute(newRoomId))
                 }
             }
         )
@@ -235,11 +252,25 @@ fun CinemaFormDialog(
     var name by remember { mutableStateOf(initialData?.name ?: "") }
     var address by remember { mutableStateOf(initialData?.address ?: "") }
     var hotline by remember { mutableStateOf(initialData?.hotline ?: "") }
-    var imageUrl by remember { mutableStateOf(initialData?.imageUrl ?: "") }
+    var imageUrl by remember(initialData) { mutableStateOf(initialData?.imageUrl ?: "") }
+
+    val trimmedName = name.trim()
+    val trimmedAddress = address.trim()
+    val trimmedHotline = hotline.trim()
+    val trimmedImageUrl = imageUrl.trim()
+
+    val isImageUrlValid = trimmedImageUrl.isBlank() || trimmedImageUrl.startsWith("http://") || trimmedImageUrl.startsWith("https://")
+    val isFormValid = trimmedName.isNotBlank() && trimmedAddress.isNotBlank() && trimmedHotline.isNotBlank() && isImageUrlValid && !isUploading
     
     val context = LocalContext.current
     val imageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { onUploadImage(context, it) { url -> if (url != null) imageUrl = url } }
+        uri?.let { 
+            onUploadImage(context, it) { url -> 
+                if (url != null) {
+                    imageUrl = url 
+                }
+            } 
+        }
     }
 
     AlertDialog(
@@ -265,6 +296,9 @@ fun CinemaFormDialog(
                     onValueChange = { hotline = it }, 
                     label = "Hotline"
                 )
+                if (trimmedHotline.isBlank()) {
+                    Text("Hotline không được để trống", color = Color.Red.copy(alpha = 0.8f), fontSize = 12.sp)
+                }
                 
                 Text("Hình ảnh rạp", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -279,21 +313,43 @@ fun CinemaFormDialog(
                         else Icon(Icons.Default.Image, contentDescription = "Chọn ảnh", tint = CyanBlue)
                     }
                 }
-                if (imageUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = imageUrl, 
-                        contentDescription = null, 
-                        modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(8.dp)), 
-                        contentScale = ContentScale.Crop
-                    )
+                if (!isImageUrlValid) {
+                    Text("URL hình ảnh không hợp lệ (cần bắt đầu bằng http/https)", color = Color.Red.copy(alpha = 0.8f), fontSize = 12.sp)
+                }
+                if (imageUrl.isNotEmpty() || isUploading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (imageUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = imageUrl, 
+                                contentDescription = null, 
+                                modifier = Modifier.fillMaxSize(), 
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        if (isUploading) {
+                            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = CyanBlue)
+                            }
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(name, address, hotline, imageUrl.ifBlank { null }) },
+                onClick = {
+                    onConfirm(
+                        trimmedName,
+                        trimmedAddress,
+                        trimmedHotline,
+                        trimmedImageUrl.ifBlank { null }
+                    )
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-                enabled = name.isNotBlank() && address.isNotBlank() && !isUploading
+                enabled = isFormValid
             ) {
                 Text("XÁC NHẬN", color = Color.Black, fontWeight = FontWeight.Bold)
             }

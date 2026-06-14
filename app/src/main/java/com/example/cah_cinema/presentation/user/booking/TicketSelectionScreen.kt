@@ -26,6 +26,7 @@ fun TicketSelectionScreen(
     onBookClick: (Int, Int, Double) -> Unit = { _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     
     val totalAmount by remember {
         derivedStateOf { state.ticketTypes.sumOf { it.price * it.quantity } }
@@ -34,8 +35,13 @@ fun TicketSelectionScreen(
         derivedStateOf { state.ticketTypes.sumOf { it.quantity } }
     }
 
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
+
     Scaffold(
         containerColor = Color(0xFF13131A),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TicketTopBar(
                 title = state.movie?.title ?: "",
@@ -53,12 +59,23 @@ fun TicketSelectionScreen(
                 onBookClick = {
                     val regularCount = state.ticketTypes.filter { it.id != "4" }.sumOf { it.quantity }
                     val coupleCount = state.ticketTypes.filter { it.id == "4" }.sumOf { it.quantity }
-                    onBookClick(regularCount, coupleCount, totalAmount)
+                    onBookClick(regularCount, coupleCount, viewModel.getBasePrice())
                 },
-                buttonText = "Đặt vé"
+                buttonText = "Đặt vé",
+                enabled = totalTickets > 0
             )
         }
     ) { paddingValues ->
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = CyanBlue)
+            }
+        } else {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -89,6 +106,7 @@ fun TicketSelectionScreen(
             item {
                 Spacer(modifier = Modifier.height(32.dp))
             }
+        }
         }
     }
 }

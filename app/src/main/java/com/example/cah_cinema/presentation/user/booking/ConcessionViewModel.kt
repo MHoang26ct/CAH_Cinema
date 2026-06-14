@@ -28,7 +28,7 @@ class ConcessionViewModel(
     private val _state = MutableStateFlow(ConcessionState())
     val state: StateFlow<ConcessionState> = _state.asStateFlow()
 
-    private val seats: String = savedStateHandle["seats"] ?: ""
+    private val seats: String = savedStateHandle["seatsDisplay"] ?: ""
     private val totalAmountParam: Float = savedStateHandle["totalAmount"] ?: 0f
 
     init {
@@ -47,7 +47,9 @@ class ConcessionViewModel(
                 val response = RetrofitClient.apiService.getFoods()
                 if (response.isSuccessful) {
                     val foodItems = response.body()?.data ?: emptyList()
-                    val domainConcessions = foodItems.map { it.toDomainConcession() }
+                    val domainConcessions = foodItems
+                        .filter { it.available }  // chỉ hiển thị món còn phục vụ
+                        .map { it.toDomainConcession() }
                     _state.update { it.copy(concessions = domainConcessions, isLoading = false) }
                 } else {
                     _state.update { it.copy(isLoading = false, errorMessage = "Không thể tải danh sách bắp nước") }
@@ -64,10 +66,10 @@ class ConcessionViewModel(
             name = this.name,
             price = this.price,
             imageUrl = this.imageUrl,
-            type = when(this.category) {
-                "Drink" -> ConcessionType.DRINK
-                "Food" -> ConcessionType.POPCORN
-                else -> ConcessionType.COMBO
+            type = when(this.category.lowercase()) {
+                "drink" -> ConcessionType.DRINK
+                "food" -> ConcessionType.POPCORN
+                else -> ConcessionType.COMBO  // "Combo", "combo", ...
             }
         )
     }

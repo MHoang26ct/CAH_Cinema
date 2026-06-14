@@ -92,8 +92,27 @@ fun ConcessionScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
+            val combos = state.concessions.filter { it.type == ConcessionType.COMBO }
             val drinks = state.concessions.filter { it.type == ConcessionType.DRINK }
             val popcorns = state.concessions.filter { it.type == ConcessionType.POPCORN }
+
+            if (combos.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Combo",
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                }
+                items(combos) { concession ->
+                    ConcessionItem(
+                        concession = concession,
+                    ) { delta -> viewModel.onQuantityChange(concession.id, delta) }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
 
             if (drinks.isNotEmpty()) {
                 item {

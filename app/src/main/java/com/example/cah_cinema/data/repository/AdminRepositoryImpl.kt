@@ -3,16 +3,49 @@ package com.example.cah_cinema.data.repository
 import com.example.cah_cinema.data.model.*
 import com.example.cah_cinema.data.remote.RetrofitClient
 import com.example.cah_cinema.domain.repository.AdminRepository
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.google.gson.reflect.TypeToken
+import okhttp3.ResponseBody
 import retrofit2.Response
 
 class AdminRepositoryImpl : AdminRepository {
 
+    private val gson = Gson()
+
     private fun <T> handle(r: Response<BaseResponse<T>>): BaseResponse<T>? {
         return if (r.isSuccessful) {
             val body = r.body()
-            if (body != null && body.code == 0) body.copy(code = r.code()) else body
+            if (body != null && body.code == 0) {
+                body.copy(code = r.code(), message = body.message ?: "success")
+            } else body
         } else {
             BaseResponse(r.code(), r.message(), null)
+        }
+    }
+
+    private fun isApiWrapped(json: JsonObject): Boolean {
+        return json.has("code") && json.has("data")
+    }
+
+    private fun <T> parsePromotionResponse(
+        r: Response<ResponseBody>,
+        dataType: java.lang.reflect.Type
+    ): BaseResponse<T>? {
+        if (!r.isSuccessful) return BaseResponse(r.code(), r.message(), null)
+
+        val bodyStr = r.body()?.string()?.trim()
+            ?: return BaseResponse(r.code(), "Empty response body", null)
+
+        val root = JsonParser.parseString(bodyStr).asJsonObject
+        return if (isApiWrapped(root)) {
+            val wrappedType = TypeToken.getParameterized(BaseResponse::class.java, dataType).type
+            val parsed: BaseResponse<T> = gson.fromJson(bodyStr, wrappedType)
+            if (parsed.code == 0) parsed.copy(code = r.code(), message = parsed.message ?: "success") else parsed
+        } else {
+            val parsed: T = gson.fromJson(bodyStr, dataType)
+            BaseResponse(r.code(), "success", parsed)
         }
     }
 
@@ -78,6 +111,9 @@ class AdminRepositoryImpl : AdminRepository {
     override suspend fun getShowtimesByCinema(cinemaId: Long, date: String): BaseResponse<List<CinemaShowtimeItem>>? =
         handle(RetrofitClient.apiService.getShowtimesByCinema(cinemaId, date))
 
+    override suspend fun getShowtimesByRoom(roomId: Long, date: String): BaseResponse<List<ShowtimeInfo>>? =
+        handle(RetrofitClient.apiService.getShowtimesByRoom(roomId, date))
+
     override suspend fun createShowtime(request: CreateShowtimeRequest): BaseResponse<Unit>? =
         handle(RetrofitClient.apiService.createShowtime(request))
 
@@ -86,6 +122,12 @@ class AdminRepositoryImpl : AdminRepository {
 
     override suspend fun deleteShowtime(id: Long): BaseResponse<Unit>? =
         handle(RetrofitClient.apiService.deleteShowtime(id))
+
+    override suspend fun cancelShowtimesByRoom(request: CancelShowtimesByRoomRequest): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.cancelShowtimesByRoom(request))
+
+    override suspend fun getShowtimeSeats(showtimeId: Long): BaseResponse<List<SeatItem>>? =
+        handle(RetrofitClient.apiService.getSeats(showtimeId))
 
     // ── Vouchers ─────────────────────────────────────────────────────────────
 
@@ -126,8 +168,14 @@ class AdminRepositoryImpl : AdminRepository {
 
     // ── Seats ─────────────────────────────────────────────────────────────────
 
+    override suspend fun getSeatsByRoom(roomId: Long): BaseResponse<List<SeatItem>>? =
+        handle(RetrofitClient.apiService.getAdminSeatsByRoom(roomId))
+
     override suspend fun createSeats(request: List<CreateSeatRequest>): BaseResponse<Unit>? =
         handle(RetrofitClient.apiService.createSeats(request))
+
+    override suspend fun replaceSeatMap(request: ReplaceSeatMapRequest): BaseResponse<Unit>? =
+        handle(RetrofitClient.apiService.replaceSeatMap(request))
 
     override suspend fun deleteSeatsByRoom(roomId: Long): BaseResponse<Unit>? =
         handle(RetrofitClient.apiService.deleteSeatsByRoom(roomId))
@@ -148,17 +196,25 @@ class AdminRepositoryImpl : AdminRepository {
 
     // ── Promotions ────────────────────────────────────────────────────────────
 
-    override suspend fun getAdminPromotions(page: Int): BaseResponse<SliceResponse<AdminPromotionItem>>? =
-        handle(RetrofitClient.apiService.getAdminPromotions(page))
+    override suspend fun getAdminPromotions(page: Int): BaseResponse<SliceResponse<AdminPromotionItem>>? {
+        val dataType = TypeToken.getParameterized(SliceResponse::class.java, AdminPromotionItem::class.java).type
+        return parsePromotionResponse(RetrofitClient.apiService.getAdminPromotionsRaw(page), dataType)
+    }
 
-    override suspend fun getAdminPromotionDetail(id: Long): BaseResponse<AdminPromotionDetail>? =
-        handle(RetrofitClient.apiService.getAdminPromotionDetail(id))
+    override suspend fun getAdminPromotionDetail(id: Long): BaseResponse<AdminPromotionDetail>? {
+        val dataType = object : TypeToken<AdminPromotionDetail>() {}.type
+        return parsePromotionResponse(RetrofitClient.apiService.getAdminPromotionDetailRaw(id), dataType)
+    }
 
-    override suspend fun createPromotion(request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>? =
-        handle(RetrofitClient.apiService.createPromotion(request))
+    override suspend fun createPromotion(request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>? {
+        val dataType = object : TypeToken<AdminPromotionDetail>() {}.type
+        return parsePromotionResponse(RetrofitClient.apiService.createPromotionRaw(request), dataType)
+    }
 
-    override suspend fun updatePromotion(id: Long, request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>? =
-        handle(RetrofitClient.apiService.updatePromotion(id, request))
+    override suspend fun updatePromotion(id: Long, request: CreateOrUpdatePromotionRequest): BaseResponse<AdminPromotionDetail>? {
+        val dataType = object : TypeToken<AdminPromotionDetail>() {}.type
+        return parsePromotionResponse(RetrofitClient.apiService.updatePromotionRaw(id, request), dataType)
+    }
 
     override suspend fun deletePromotion(id: Long): BaseResponse<Unit>? =
         handle(RetrofitClient.apiService.deletePromotion(id))
