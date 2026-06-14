@@ -19,7 +19,7 @@ interface AdminRepository {
     suspend fun getCinemas(): BaseResponse<List<CinemaItem>>?
     suspend fun getCinemaDetail(cinemaId: Long): BaseResponse<CinemaItem>?
     suspend fun createCinema(request: CreateCinemaRequest): BaseResponse<CinemaItem>?
-    suspend fun updateCinema(cinemaId: Long, request: CreateCinemaRequest): BaseResponse<CinemaItem>?
+    suspend fun updateCinema(cinemaId: Long, request: UpdateCinemaRequest): BaseResponse<CinemaItem>?
     suspend fun deleteCinema(id: Long): BaseResponse<Unit>?
     suspend fun getRoomsByCinema(cinemaId: Long): BaseResponse<List<RoomItem>>?
     suspend fun createRoom(cinemaId: Long, request: CreateRoomRequest): BaseResponse<RoomItem>?

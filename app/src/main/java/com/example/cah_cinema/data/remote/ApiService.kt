@@ -209,7 +209,7 @@ interface ApiService {
     @PUT("api/v1/admin/cinemas/{cinemaId}")
     suspend fun updateCinema(
         @Path("cinemaId") cinemaId: Long,
-        @Body request: CreateCinemaRequest
+        @Body request: UpdateCinemaRequest
     ): Response<BaseResponse<CinemaItem>>
 
     @DELETE("api/v1/admin/cinemas/{cinemaId}")

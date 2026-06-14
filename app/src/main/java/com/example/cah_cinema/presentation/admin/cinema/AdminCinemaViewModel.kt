@@ -90,7 +90,10 @@ class AdminCinemaViewModel(
         viewModelScope.launch {
             try {
                 Log.d("AdminCinema", "Updating cinema $cinemaId: name=$name, imageUrl=$imageUrl")
-                val resp = repository.updateCinema(cinemaId, CreateCinemaRequest(name, address, hotline, imageUrl))
+                val resp = repository.updateCinema(
+                    cinemaId,
+                    UpdateCinemaRequest(cinemaId = cinemaId, name = name, address = address, hotline = hotline, imageUrl = imageUrl)
+                )
                 Log.d("AdminCinema", "Update response: ${resp?.code} - ${resp?.message}")
                 if (resp != null && resp.code in 200..299) {
                     _state.update { it.copy(successMessage = "Cập nhật rạp thành công") }

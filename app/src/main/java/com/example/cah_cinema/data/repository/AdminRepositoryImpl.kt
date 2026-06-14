@@ -88,7 +88,7 @@ class AdminRepositoryImpl : AdminRepository {
     override suspend fun createCinema(request: CreateCinemaRequest): BaseResponse<CinemaItem>? =
         handle(RetrofitClient.apiService.createCinema(request))
 
-    override suspend fun updateCinema(cinemaId: Long, request: CreateCinemaRequest): BaseResponse<CinemaItem>? =
+    override suspend fun updateCinema(cinemaId: Long, request: UpdateCinemaRequest): BaseResponse<CinemaItem>? =
         handle(RetrofitClient.apiService.updateCinema(cinemaId, request))
 
     override suspend fun deleteCinema(id: Long): BaseResponse<Unit>? =

@@ -54,6 +54,14 @@ data class CreateCinemaRequest(
     @SerializedName("imageUrl") val imageUrl: String? = null
 )
 
+data class UpdateCinemaRequest(
+    @SerializedName("cinemaId") val cinemaId: Long,
+    @SerializedName("name") val name: String,
+    @SerializedName("address") val address: String,
+    @SerializedName("hotline") val hotline: String,
+    @SerializedName("imageUrl") val imageUrl: String? = null
+)
+
 data class CreateRoomRequest(
     @SerializedName("cinemaId") val cinemaId: Long,
     @SerializedName("roomName") val roomName: String
