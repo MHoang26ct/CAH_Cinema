@@ -296,7 +296,9 @@ class MainActivity : ComponentActivity() {
                                             onMovieClick = { movieId -> navController.navigate(Screen.MovieDetail.createRoute(movieId)) },
                                             onPromotionClick = { promotionId -> navController.navigate(Screen.PromotionDetail.createRoute(promotionId)) },
                                             onSeeAllUpcomingClick = { navController.navigate(Screen.UpcomingMovies.route) },
-                                            onSeeAllPromotionsClick = { navController.navigateToTab(Screen.Notification.route) }
+                                            onSeeAllPromotionsClick = { navController.navigateToTab(Screen.Notification.route) },
+                                            onProfileClick = { navController.navigateToTab(Screen.Profile.route) },
+                                            onNotificationClick = { navController.navigateToTab(Screen.Notification.route) }
                                         )
                                     }
 

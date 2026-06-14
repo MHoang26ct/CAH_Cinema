@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 
 data class HomeState(
     val userName: String = "",
+    val avatarUrl: String? = null,
     val featuredMovies: List<Movie> = emptyList(),
     val upcomingMovies: List<Movie> = emptyList(),
     val promotions: List<Promotion> = emptyList(),
@@ -44,6 +45,35 @@ class HomeViewModel : ViewModel() {
 
     init {
         fetchFeaturedMovies()
+        loadUserProfile()
+    }
+
+    private fun loadUserProfile() {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getMyProfile()
+                if (response.isSuccessful) {
+                    val user = response.body()?.data?.user
+                    _state.update {
+                        it.copy(
+                            userName = user?.name ?: it.userName,
+                            avatarUrl = user?.avatarUrl
+                        )
+                    }
+                } else {
+                    // fallback: đọc avatar từ cache local
+                    val cachedAvatar = RetrofitClient.getLocalAvatarUrl()
+                    if (!cachedAvatar.isNullOrBlank()) {
+                        _state.update { it.copy(avatarUrl = cachedAvatar) }
+                    }
+                }
+            } catch (_: Exception) {
+                val cachedAvatar = RetrofitClient.getLocalAvatarUrl()
+                if (!cachedAvatar.isNullOrBlank()) {
+                    _state.update { it.copy(avatarUrl = cachedAvatar) }
+                }
+            }
+        }
     }
 
     fun fetchFeaturedMovies() {

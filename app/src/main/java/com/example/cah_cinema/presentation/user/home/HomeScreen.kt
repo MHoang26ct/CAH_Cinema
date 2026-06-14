@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -36,7 +37,9 @@ fun HomeScreen(
     onMovieClick: (String) -> Unit = {},
     onPromotionClick: (String) -> Unit = {},
     onSeeAllUpcomingClick: () -> Unit = {},
-    onSeeAllPromotionsClick: () -> Unit = {}
+    onSeeAllPromotionsClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
+    onNotificationClick: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     
@@ -46,7 +49,9 @@ fun HomeScreen(
             onMovieClick = onMovieClick,
             onPromotionClick = onPromotionClick,
             onSeeAllUpcomingClick = onSeeAllUpcomingClick,
-            onSeeAllPromotionsClick = onSeeAllPromotionsClick
+            onSeeAllPromotionsClick = onSeeAllPromotionsClick,
+            onProfileClick = onProfileClick,
+            onNotificationClick = onNotificationClick
         )
         
         if (state.isLoading) {
@@ -62,6 +67,8 @@ fun HomeContent(
     onPromotionClick: (String) -> Unit,
     onSeeAllUpcomingClick: () -> Unit,
     onSeeAllPromotionsClick: () -> Unit,
+    onProfileClick: () -> Unit = {},
+    onNotificationClick: () -> Unit = {}
 ) {
     Scaffold(
         containerColor = Color(0xFF13131A),
@@ -71,7 +78,12 @@ fun HomeContent(
             contentPadding = paddingValues
         ) {
             item {
-                HomeHeader(userName = state.userName)
+                HomeHeader(
+                    userName = state.userName,
+                    avatarUrl = state.avatarUrl,
+                    onProfileClick = onProfileClick,
+                    onNotificationClick = onNotificationClick
+                )
             }
 
             // Phim nổi bật
@@ -144,49 +156,79 @@ fun HomeContent(
 }
 
 @Composable
-fun HomeHeader(userName: String) {
-// ... (rest remains same)
+fun HomeHeader(
+    userName: String,
+    avatarUrl: String? = null,
+    onProfileClick: () -> Unit = {},
+    onNotificationClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
+        // Phần chào hỏi bên trái
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Chào mừng trở lại",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Chào mừng trở lại 👋",
+                style = MaterialTheme.typography.bodySmall,
                 color = TextGray
             )
             Text(
-                text = userName,
-                style = MaterialTheme.typography.headlineMedium,
+                text = if (userName.isNotBlank()) userName else "Khách",
+                style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
             )
         }
-        
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { /* TODO */ }) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = null,
-                    tint = Color.White
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Icon thông báo
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF2D2D35))
+                .clickable { onNotificationClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = "Thông báo",
+                tint = Color.White,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Avatar — nhấn vào vào Profile
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF2D2D35))
+                .clickable { onProfileClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            if (!avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Avatar",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(45.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2D2D35))
-            ) {
+            } else {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.align(Alignment.Center),
-                    tint = Color.White
+                    contentDescription = "Profile",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
