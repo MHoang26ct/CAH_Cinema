@@ -170,7 +170,19 @@ class MovieDetailViewModel(
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("MovieDetail", "Submit comment failed: ${response.code()} - $errorBody")
-                    val msg = if (response.code() == 401) "Vui lòng đăng nhập lại" else "Lỗi: ${response.message()}"
+                    val msg = when (response.code()) {
+                        401 -> "Vui lòng đăng nhập lại"
+                        400 -> {
+                            // Parse message từ backend JSON (ví dụ: USER_NOT_CHECKED_IN)
+                            try {
+                                val json = org.json.JSONObject(errorBody ?: "")
+                                json.optString("message", "Không thể gửi bình luận")
+                            } catch (_: Exception) {
+                                "Không thể gửi bình luận"
+                            }
+                        }
+                        else -> "Lỗi: ${response.message()}"
+                    }
                     _state.update { it.copy(isSubmittingComment = false, errorMessage = msg) }
                 }
             } catch (e: Exception) {
