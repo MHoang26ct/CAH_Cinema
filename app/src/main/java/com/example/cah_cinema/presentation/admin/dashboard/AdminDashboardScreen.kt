@@ -21,9 +21,21 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cah_cinema.data.model.BusinessOverviewResponse
+import com.example.cah_cinema.data.model.CinemaRevenueResponse
+import com.example.cah_cinema.data.model.MovieRevenueResponse
+import com.example.cah_cinema.presentation.admin.components.AdminChartCard
 import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.presentation.admin.components.AdminStatCard
+import com.example.cah_cinema.presentation.admin.components.SimpleBarChart
+import com.example.cah_cinema.presentation.admin.components.SimplePieChart
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
+
+data class AdminDashboardState(
+    val overview: BusinessOverviewResponse? = null,
+    val movieRevenue: List<MovieRevenueResponse> = emptyList(),
+    val cinemaRevenue: List<CinemaRevenueResponse> = emptyList(),
+    val isLoading: Boolean = false
+)
 
 @Composable
 fun AdminDashboardScreen(
@@ -65,12 +77,13 @@ fun AdminDashboardContent(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(bottom = 32.dp)
                 ) {
                     item {
                         AdminStatCard(
                             title = "Doanh thu",
-                            value = "${state.overview?.totalRevenue ?: 0} đ",
+                            value = "${state.overview?.totalRevenue?.toInt() ?: 0} đ",
                             icon = Icons.Default.AttachMoney,
                             color = Color(0xFF4CAF50)
                         )
@@ -100,6 +113,43 @@ fun AdminDashboardContent(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    val pieChartColors = listOf(
+                        Color(0xFF00BCD4),
+                        Color(0xFF4CAF50),
+                        Color(0xFFFF9800),
+                        Color(0xFFE91E63),
+                        Color(0xFF9C27B0)
+                    )
+
+                    AdminChartCard(
+                        title = "Top Phim Doanh Thu",
+                        modifier = Modifier.weight(1.2f)
+                    ) {
+                        SimplePieChart(
+                            data = state.movieRevenue.take(5).map { it.movieTitle to it.ticketRevenue },
+                            colors = pieChartColors
+                        )
+                    }
+
+                    AdminChartCard(
+                        title = "Doanh Thu Theo Rạp",
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        SimpleBarChart(
+                            data = state.cinemaRevenue.take(5).map { it.cinemaName to it.ticketRevenue },
+                            color = Color(0xFFFFC107)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -121,6 +171,20 @@ fun AdminDashboardPreview() {
                     totalBookingsPaid = 120,
                     totalDiscount = 500000.0,
                     averageOrderValue = 208333.33
+                ),
+                movieRevenue = listOf(
+                    MovieRevenueResponse(1, "Avengers: Endgame", 5000000.0, 100),
+                    MovieRevenueResponse(2, "Avatar 2", 4500000.0, 90),
+                    MovieRevenueResponse(3, "Spider-Man", 3000000.0, 60),
+                    MovieRevenueResponse(4, "Inception", 2500000.0, 50),
+                    MovieRevenueResponse(5, "Batman", 2000000.0, 40)
+                ),
+                cinemaRevenue = listOf(
+                    CinemaRevenueResponse(1, "CGV Vincom", 8000000.0, 150),
+                    CinemaRevenueResponse(2, "Lotte Cinema", 7000000.0, 130),
+                    CinemaRevenueResponse(3, "BHD Star", 5000000.0, 100),
+                    CinemaRevenueResponse(4, "Galaxy Cinema", 4000000.0, 80),
+                    CinemaRevenueResponse(5, "Cinestar", 1000000.0, 20)
                 ),
                 isLoading = false
             )

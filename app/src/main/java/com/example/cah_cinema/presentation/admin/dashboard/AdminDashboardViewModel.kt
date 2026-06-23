@@ -3,6 +3,8 @@ package com.example.cah_cinema.presentation.admin.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.model.BusinessOverviewResponse
+import com.example.cah_cinema.data.model.CinemaRevenueResponse
+import com.example.cah_cinema.data.model.MovieRevenueResponse
 import com.example.cah_cinema.domain.repository.AdminRepository
 import com.example.cah_cinema.data.repository.AdminRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,12 +15,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class AdminDashboardState(
-    val overview: BusinessOverviewResponse? = null,
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null
-)
-
 class AdminDashboardViewModel(
     private val repository: AdminRepository = AdminRepositoryImpl()
 ) : ViewModel() {
@@ -26,24 +22,30 @@ class AdminDashboardViewModel(
     val state: StateFlow<AdminDashboardState> = _state.asStateFlow()
 
     init {
-        loadOverview()
+        loadDashboardData()
     }
 
-    fun loadOverview() {
+    fun loadDashboardData() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val today = sdf.format(Date())
         
-        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             try {
-                val response = repository.getBusinessOverview(today, today)
-                if (response?.code == 200) {
-                    _state.update { it.copy(overview = response.data, isLoading = false) }
-                } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi tải báo cáo") }
+                val overviewResponse = repository.getBusinessOverview(today, today)
+                val movieResponse = repository.getMovieRevenue(today, today)
+                val cinemaResponse = repository.getCinemaRevenue(today, today)
+
+                _state.update { 
+                    it.copy(
+                        overview = overviewResponse?.data,
+                        movieRevenue = movieResponse?.data ?: emptyList(),
+                        cinemaRevenue = cinemaResponse?.data ?: emptyList(),
+                        isLoading = false
+                    )
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _state.update { it.copy(isLoading = false) }
             }
         }
     }

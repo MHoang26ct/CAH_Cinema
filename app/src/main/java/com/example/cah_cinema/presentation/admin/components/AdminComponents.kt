@@ -1,7 +1,10 @@
 package com.example.cah_cinema.presentation.admin.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -202,6 +205,234 @@ fun AdminStatCard(
             Column {
                 Text(title, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.labelLarge)
                 Text(value, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminChartCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        modifier = modifier,
+        color = Color(0xFF1C1C22),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 28.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+fun SimpleBarChart(
+    data: List<Pair<String, Double>>,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val maxVal = data.maxOfOrNull { it.second } ?: 1.0
+    
+    Row(
+        modifier = modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        data.forEach { item ->
+            val animatedHeightPercent by animateFloatAsState(
+                targetValue = (item.second / maxVal).toFloat().coerceIn(0.05f, 1f),
+                animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+                label = "barHeight"
+            )
+            
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Chart area (Value + Bar) - takes up remaining space
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.Bottom,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Value label on top
+                    Text(
+                        text = if (item.second >= 1_000_000) 
+                            "${String.format("%.1f", item.second / 1_000_000)}M" 
+                            else "${(item.second / 1000).toInt()}K",
+                        color = color,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(animatedHeightPercent)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        color.copy(alpha = 0.9f),
+                                        color.copy(alpha = 0.15f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                            )
+                    ) {
+                        // Accent line at the top
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp)
+                                .background(color, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                                .align(Alignment.TopCenter)
+                        )
+                    }
+                }
+                
+                // Fixed height label area ensures all bars start at same baseline
+                Box(
+                    modifier = Modifier
+                        .height(48.dp)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Text(
+                        text = item.first,
+                        color = Color.White.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 2,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 12.dp, start = 2.dp, end = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SimplePieChart(
+    data: List<Pair<String, Double>>,
+    colors: List<Color>,
+    modifier: Modifier = Modifier
+) {
+    val total = data.sumOf { it.second }.toFloat()
+    if (total == 0f) return
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+        label = "pieProgress"
+    )
+
+    Row(
+        modifier = modifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(32.dp)
+    ) {
+        // Donut Chart
+        Box(
+            modifier = Modifier
+                .size(200.dp)
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                var startAngle = -90f
+                data.forEachIndexed { index, pair ->
+                    val sweepAngle = (pair.second.toFloat() / total) * 360f * animatedProgress
+                    drawArc(
+                        color = colors.getOrElse(index) { Color.Gray },
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = false,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 30.dp.toPx(),
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                    )
+                    startAngle += sweepAngle
+                }
+            }
+            
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "TOP 1",
+                    color = Color.White.copy(alpha = 0.5f),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${((data.firstOrNull()?.second ?: 0.0) / total * 100).toInt()}%",
+                    color = colors.firstOrNull() ?: Color.White,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+
+        // Legend
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            data.forEachIndexed { index, pair ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(colors.getOrElse(index) { Color.Gray }, CircleShape)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = pair.first,
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = if (pair.second >= 1_000_000) 
+                                "${String.format("%.1fM đ", pair.second / 1_000_000)}" 
+                                else "${(pair.second / 1000).toInt()}K đ",
+                            color = Color.White.copy(alpha = 0.4f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                    Text(
+                        text = "${((pair.second / total) * 100).toInt()}%",
+                        color = colors.getOrElse(index) { Color.Gray }.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
