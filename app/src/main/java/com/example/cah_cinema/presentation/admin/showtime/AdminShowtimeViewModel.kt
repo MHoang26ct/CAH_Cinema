@@ -19,7 +19,16 @@ data class AdminShowtimeState(
     val cinemas: List<CinemaItem> = emptyList(),
     val rooms: List<RoomItem> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val successMessage: String? = null,
+    
+    // Room maintenance view
+    val roomShowtimes: List<ShowtimeInfo> = emptyList(),
+    val selectedMaintenanceRoom: RoomItem? = null,
+    
+    // Showtime seats occupancy
+    val showtimeSeats: List<SeatItem> = emptyList(),
+    val isLoadingSeats: Boolean = false
 )
 
 class AdminShowtimeViewModel(
@@ -106,8 +115,9 @@ class AdminShowtimeViewModel(
                 val resp = repository.createShowtime(request)
                 android.util.Log.d("AdminShowtime", "Response: $resp")
                 if (resp != null && resp.code in 200..299) {
-                    loadShowtimes()
-                    onSuccess()
+                    _state.update { it.copy(isLoading = false, successMessage = "Tạo lịch chiếu thành công") }
+                    onSuccess()           // đóng dialog trước
+                    reloadShowtimesSilent() // reload sau, không set errorMessage nếu fail
                 } else {
                     val msg = resp?.message ?: "Lỗi tạo lịch chiếu"
                     android.util.Log.e("AdminShowtime", "Error: $msg")
@@ -120,14 +130,36 @@ class AdminShowtimeViewModel(
         }
     }
 
+    /** Reload lịch chiếu sau khi tạo/sửa/xóa — không báo lỗi nếu reload thất bại */
+    private fun reloadShowtimesSilent() {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val today = sdf.format(Date())
+        val cinemas = _state.value.cinemas
+        if (cinemas.isEmpty()) return
+        val cinemaId = cinemas.first().id
+        viewModelScope.launch {
+            try {
+                val resp = repository.getShowtimesByCinema(cinemaId, today)
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(showtimesByMovie = resp.data ?: emptyList(), isLoading = false) }
+                } else {
+                    _state.update { it.copy(isLoading = false) }
+                }
+            } catch (_: Exception) {
+                _state.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
     fun updateShowtime(request: UpdateShowtimeRequest, onSuccess: () -> Unit) {
         _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             try {
                 val resp = repository.updateShowtime(request)
                 if (resp != null && resp.code in 200..299) {
-                    loadShowtimes()
+                    _state.update { it.copy(isLoading = false, successMessage = "Cập nhật lịch chiếu thành công") }
                     onSuccess()
+                    reloadShowtimesSilent()
                 } else {
                     _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi cập nhật lịch chiếu") }
                 }
@@ -142,10 +174,70 @@ class AdminShowtimeViewModel(
             try {
                 val resp = repository.deleteShowtime(id)
                 if (resp != null && resp.code in 200..299) {
-                    loadShowtimes()
+                    reloadShowtimesSilent()
                 }
-            } catch (e: Exception) { }
+            } catch (_: Exception) { }
         }
+    }
+
+    fun loadShowtimesByRoom(roomId: Long, date: String) {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                val resp = repository.getShowtimesByRoom(roomId, date)
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(roomShowtimes = resp.data ?: emptyList(), isLoading = false) }
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi tải lịch chiếu theo phòng") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun cancelShowtimesByRoom(roomId: Long, fromDate: String, toDate: String, reason: String, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                val request = CancelShowtimesByRoomRequest(
+                    roomId = roomId,
+                    fromDate = fromDate,
+                    toDate = toDate,
+                    reason = reason.ifBlank { null }
+                )
+                val resp = repository.cancelShowtimesByRoom(request)
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(isLoading = false, successMessage = resp.message ?: "Đã hủy lịch chiếu hàng loạt") }
+                    loadShowtimes()
+                    onSuccess()
+                } else {
+                    _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi hủy lịch chiếu hàng loạt") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun loadShowtimeSeats(showtimeId: Long) {
+        _state.update { it.copy(isLoadingSeats = true, showtimeSeats = emptyList()) }
+        viewModelScope.launch {
+            try {
+                val resp = repository.getShowtimeSeats(showtimeId)
+                if (resp != null && resp.code in 200..299) {
+                    _state.update { it.copy(showtimeSeats = resp.data ?: emptyList(), isLoadingSeats = false) }
+                } else {
+                    _state.update { it.copy(isLoadingSeats = false, errorMessage = resp?.message ?: "Lỗi tải sơ đồ ghế") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoadingSeats = false, errorMessage = e.message) }
+            }
+        }
+    }
+
+    fun clearMessages() {
+        _state.update { it.copy(errorMessage = null, successMessage = null) }
     }
 
     fun clearError() {

@@ -2,6 +2,7 @@ package com.example.cah_cinema.presentation.admin.promotion
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.model.*
@@ -38,13 +39,22 @@ class AdminPromotionViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
+                Log.d("AdminPromotion", "Fetching promotions...")
                 val response = adminRepository.getAdminPromotions(0)
+                Log.d("AdminPromotion", "Response: code=${response?.code}, message=${response?.message}")
+                Log.d("AdminPromotion", "Full Data Body: ${response?.toString()}")
+                
                 if (response?.code in 200..299) {
-                    _state.update { it.copy(promotions = response?.data?.content ?: emptyList(), isLoading = false) }
+                    val list = response?.data?.content ?: emptyList<AdminPromotionItem>()
+                    Log.d("AdminPromotion", "Successfully loaded ${list.size} promotions")
+                    _state.update { it.copy(promotions = list, isLoading = false) }
                 } else {
-                    _state.update { it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi tải khuyến mãi") }
+                    val errorMsg = response?.message ?: "Lỗi tải khuyến mãi (${response?.code})"
+                    Log.e("AdminPromotion", "Fetch failed: $errorMsg")
+                    _state.update { it.copy(isLoading = false, errorMessage = errorMsg) }
                 }
             } catch (e: Exception) {
+                Log.e("AdminPromotion", "Exception fetching promotions", e)
                 _state.update { it.copy(isLoading = false, errorMessage = "Lỗi kết nối: ${e.message}") }
             }
         }

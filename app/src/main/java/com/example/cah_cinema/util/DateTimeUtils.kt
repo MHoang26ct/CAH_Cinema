@@ -28,4 +28,21 @@ object DateTimeUtils {
     fun getTodayDay(): String = SimpleDateFormat("dd", Locale.getDefault()).format(Date())
     fun getTodayMonth(): String = SimpleDateFormat("MM", Locale.getDefault()).format(Date())
     fun getTodayYear(): String = SimpleDateFormat("yyyy", Locale.getDefault()).format(Date())
+
+    /** Chuyển ngày từ navigation (dd-MM hoặc dd/MM) sang yyyy-MM-dd cho API showtime. */
+    fun navDateToApiDate(navDate: String): String? {
+        if (navDate.isBlank()) return null
+        val normalized = navDate.replace("-", "/")
+        val parts = normalized.split("/")
+        return when {
+            parts.size >= 3 -> {
+                if (parts[0].length == 4) "${parts[0]}-${parts[1]}-${parts[2]}"
+                else "${parts[2]}-${parts[1]}-${parts[0]}"
+            }
+            parts.size == 2 -> "${getCurrentYear()}-${parts[1]}-${parts[0]}"
+            else -> null
+        }
+    }
+
+    fun navDateToDisplay(navDate: String): String = navDate.replace("-", "/")
 }

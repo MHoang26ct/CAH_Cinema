@@ -57,8 +57,35 @@ sealed class Screen(val route: String) {
     object AdminShowtimeManagement : Screen("admin_showtimes")
     object AdminFoodManagement : Screen("admin_food")
     object AdminReport : Screen("admin_reports")
-    object AdminSeatManagement : Screen("admin_seats/{roomId}") {
-        fun createRoute(roomId: Long) = "admin_seats/$roomId"
+    object AdminSeatManagement : Screen("admin_seats/{roomId}/{cinemaId}") {
+        fun createRoute(roomId: Long, cinemaId: Long) = "admin_seats/$roomId/$cinemaId"
     }
     object AdminSettings : Screen("admin_settings")
+
+    // Staff Screens
+    object StaffDashboard : Screen("staff_dashboard")
+    object StaffCheckIn : Screen("staff_checkin")
+    object StaffSellTicket : Screen("staff_sell_ticket")
+    object StaffSellSeatSelection : Screen("staff_sell_seats/{showtimeId}/{movieTitle}/{moviePosterUrl}/{cinemaName}/{roomName}/{startTime}/{basePrice}") {
+        fun createRoute(
+            showtimeId: Long,
+            movieTitle: String,
+            moviePosterUrl: String,
+            cinemaName: String,
+            roomName: String,
+            startTime: String,
+            basePrice: Double
+        ) = "staff_sell_seats/${showtimeId}/${android.net.Uri.encode(movieTitle)}/${android.net.Uri.encode(moviePosterUrl)}/${android.net.Uri.encode(cinemaName)}/${android.net.Uri.encode(roomName)}/${android.net.Uri.encode(startTime)}/$basePrice"
+    }
+    object StaffSellPayment : Screen("staff_sell_payment/{showtimeId}/{seatIds}/{seatsDisplay}/{totalAmount}/{movieTitle}/{cinemaName}/{startTime}") {
+        fun createRoute(
+            showtimeId: Long,
+            seatIds: String,
+            seatsDisplay: String,
+            totalAmount: Double,
+            movieTitle: String,
+            cinemaName: String,
+            startTime: String
+        ) = "staff_sell_payment/$showtimeId/${android.net.Uri.encode(seatIds)}/${android.net.Uri.encode(seatsDisplay)}/$totalAmount/${android.net.Uri.encode(movieTitle)}/${android.net.Uri.encode(cinemaName)}/${android.net.Uri.encode(startTime)}"
+    }
 }

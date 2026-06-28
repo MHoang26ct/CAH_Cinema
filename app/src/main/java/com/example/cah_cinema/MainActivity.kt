@@ -1,6 +1,7 @@
 package com.example.cah_cinema
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,9 +11,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -68,6 +70,16 @@ import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 
 import com.example.cah_cinema.data.remote.RetrofitClient
 
+// Staff imports
+import com.example.cah_cinema.presentation.staff.dashboard.StaffDashboardScreen
+import com.example.cah_cinema.presentation.staff.dashboard.StaffDashboardViewModel
+import com.example.cah_cinema.presentation.staff.checkin.StaffCheckInScreen
+import com.example.cah_cinema.presentation.staff.sell.StaffSellTicketScreen
+import com.example.cah_cinema.presentation.staff.sell.StaffSellSeatSelectionScreen
+import com.example.cah_cinema.presentation.staff.sell.StaffSellPaymentScreen
+import com.example.cah_cinema.presentation.staff.sell.StaffPaymentSuccessScreen
+import com.example.cah_cinema.presentation.staff.sell.StaffSellTicketViewModel
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -87,6 +99,12 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
+
+                // Xử lý deep link khi VNPay/MoMo redirect về app
+                // URL: cahcinema://payment/result?vnp_ResponseCode=00&...
+                LaunchedEffect(intent) {
+                    handlePaymentDeepLink(intent, navController)
+                }
 
                 if (!isReady) return@CAH_CinemaTheme
 
@@ -130,7 +148,10 @@ class MainActivity : ComponentActivity() {
                             Screen.AdminFoodManagement.route to 15,
                             Screen.AdminVoucherManagement.route to 16,
                             Screen.AdminReport.route to 17,
-                            Screen.AdminSettings.route to 18
+                            Screen.AdminSettings.route to 18,
+                            Screen.StaffDashboard.route to 20,
+                            Screen.StaffCheckIn.route to 21,
+                            Screen.StaffSellTicket.route to 22
                         )
 
                         val isSidebarExpanded = remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -217,6 +238,10 @@ class MainActivity : ComponentActivity() {
                                                     navController.navigate(Screen.AdminDashboard.route) {
                                                         popUpTo(Screen.Login.route) { inclusive = true }
                                                     }
+                                                } else if (role == "ROLE_STAFF") {
+                                                    navController.navigate(Screen.StaffDashboard.route) {
+                                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                                    }
                                                 } else {
                                                     navController.navigate(Screen.Home.route) {
                                                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -229,9 +254,9 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(Screen.TicketDetail.route) {
-                                        val viewModel: ProfileViewModel = viewModel()
+                                        val profileViewModel: ProfileViewModel = viewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
                                         TicketDetailScreen(
-                                            viewModel = viewModel,
+                                            viewModel = profileViewModel,
                                             onBackClick = { navController.popBackStack() }
                                         )
                                     }
@@ -289,7 +314,9 @@ class MainActivity : ComponentActivity() {
                                             onMovieClick = { movieId -> navController.navigate(Screen.MovieDetail.createRoute(movieId)) },
                                             onPromotionClick = { promotionId -> navController.navigate(Screen.PromotionDetail.createRoute(promotionId)) },
                                             onSeeAllUpcomingClick = { navController.navigate(Screen.UpcomingMovies.route) },
-                                            onSeeAllPromotionsClick = { navController.navigateToTab(Screen.Notification.route) }
+                                            onSeeAllPromotionsClick = { navController.navigateToTab(Screen.Notification.route) },
+                                            onProfileClick = { navController.navigateToTab(Screen.Profile.route) },
+                                            onNotificationClick = { navController.navigateToTab(Screen.Notification.route) }
                                         )
                                     }
 
@@ -313,9 +340,9 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(Screen.Profile.route) {
-                                        val viewModel: ProfileViewModel = viewModel()
+                                        val profileViewModel: ProfileViewModel = viewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
                                         ProfileScreen(
-                                            viewModel = viewModel,
+                                            viewModel = profileViewModel,
                                             onNavigateToChangePassword = { navController.navigate(Screen.ChangePassword.route) },
                                             onNavigateToEditProfile = { navController.navigate(Screen.EditProfile.route) },
                                             onNavigateToAllTickets = { navController.navigate(Screen.BookingHistory.route) },
@@ -330,12 +357,12 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(Screen.BookingHistory.route) {
-                                        val viewModel: ProfileViewModel = viewModel()
+                                        val profileViewModel: ProfileViewModel = viewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
                                         BookingHistoryScreen(
-                                            viewModel = viewModel,
+                                            viewModel = profileViewModel,
                                             onBackClick = { navController.popBackStack() },
                                             onTicketClick = { invoice ->
-                                                viewModel.setSelectedInvoice(invoice)
+                                                profileViewModel.setSelectedInvoice(invoice)
                                                 navController.navigate(Screen.TicketDetail.route)
                                             }
                                         )
@@ -349,9 +376,9 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(Screen.EditProfile.route) {
-                                        val viewModel: ProfileViewModel = viewModel()
+                                        val profileViewModel: ProfileViewModel = viewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
                                         EditProfileScreen(
-                                            viewModel = viewModel,
+                                            viewModel = profileViewModel,
                                             onBackClick = { navController.popBackStack() },
                                             onSaveClick = { _, _, _ -> navController.popBackStack() }
                                         )
@@ -515,13 +542,23 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(Screen.PaymentLoading.route) { entry ->
-                                        val profileViewModel: ProfileViewModel = viewModel()
+                                        val profileViewModel: ProfileViewModel = viewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
                                         val concessionEntry = remember(entry) { navController.getBackStackEntry(Screen.Concession.route) }
                                         val paymentViewModel: PaymentViewModel = viewModel(viewModelStoreOwner = concessionEntry)
                                         val paymentState by paymentViewModel.uiState.collectAsState()
 
                                         PaymentLoadingScreen(
                                             onLoadingComplete = {
+                                                val foods = paymentState.concessionSummary.map {
+                                                    com.example.cah_cinema.data.model.InvoiceFood(
+                                                        foodId = it.foodId,
+                                                        foodName = it.name,
+                                                        foodImageUrl = it.imageUrl,
+                                                        foodCategory = "", // Backend will provide this in history
+                                                        quantity = it.quantity,
+                                                        unitPrice = it.unitPrice
+                                                    )
+                                                }
                                                 profileViewModel.updateRecentTicket(
                                                     TicketInfo(
                                                         movieTitle = paymentState.movieTitle,
@@ -529,7 +566,12 @@ class MainActivity : ComponentActivity() {
                                                         showTime = "${paymentState.showtime} - ${paymentState.date}",
                                                         seat = paymentState.selectedSeats.joinToString(", "),
                                                         posterUrl = paymentState.posterUrl,
-                                                        bookingId = paymentState.bookingId ?: 0L
+                                                        bookingId = paymentState.bookingId ?: 0L,
+                                                        roomName = paymentState.room,
+                                                        totalPrice = paymentState.finalAmount,
+                                                        foods = foods,
+                                                        discountAmount = paymentState.discount,
+                                                        foodTotalPrice = paymentState.concessionTotal
                                                     )
                                                 )
                                                 profileViewModel.loadProfileData()
@@ -552,15 +594,163 @@ class MainActivity : ComponentActivity() {
                                     composable(Screen.AdminReport.route) { AdminReportScreen() }
                                     composable(
                                         route = Screen.AdminSeatManagement.route,
-                                        arguments = listOf(navArgument("roomId") { type = NavType.LongType })
+                                        arguments = listOf(
+                                            navArgument("roomId") { type = NavType.LongType },
+                                            navArgument("cinemaId") { type = NavType.LongType }
+                                        )
                                     ) { entry ->
                                         val roomId = entry.arguments?.getLong("roomId") ?: 0L
+                                        val cinemaId = entry.arguments?.getLong("cinemaId") ?: 0L
                                         AdminSeatManagementScreen(
                                             roomId = roomId,
+                                            cinemaId = cinemaId,
                                             onBack = { navController.popBackStack() }
                                         )
                                     }
                                     composable(Screen.AdminSettings.route) { AdminSettingsScreen() }
+
+                                    // ── Staff routes ─────────────────────────────────────────────
+                                    composable(Screen.StaffDashboard.route) {
+                                        val staffVm: StaffDashboardViewModel = viewModel()
+                                        val staffName by staffVm.staffName.collectAsState()
+                                        StaffDashboardScreen(
+                                            staffName = staffName,
+                                            onCheckInClick = {
+                                                navController.navigate(Screen.StaffCheckIn.route)
+                                            },
+                                            onSellTicketClick = {
+                                                navController.navigate(Screen.StaffSellTicket.route)
+                                            },
+                                            onLogoutClick = {
+                                                staffVm.logout()
+                                                navController.navigate(Screen.Login.route) {
+                                                    popUpTo(0) { inclusive = true }
+                                                }
+                                            }
+                                        )
+                                    }
+
+                                    composable(Screen.StaffCheckIn.route) {
+                                        StaffCheckInScreen(
+                                            onBackClick = { navController.popBackStack() }
+                                        )
+                                    }
+
+                                    composable(Screen.StaffSellTicket.route) {
+                                        val sellVm: StaffSellTicketViewModel = viewModel()
+                                        StaffSellTicketScreen(
+                                            viewModel = sellVm,
+                                            onNavigateToSeatSelection = { showtimeId, movieTitle, moviePosterUrl, cinemaName, roomName, startTime, basePrice ->
+                                                navController.navigate(
+                                                    Screen.StaffSellSeatSelection.createRoute(
+                                                        showtimeId, movieTitle, moviePosterUrl,
+                                                        cinemaName, roomName, startTime, basePrice
+                                                    )
+                                                )
+                                            },
+                                            onBackClick = { navController.popBackStack() }
+                                        )
+                                    }
+
+                                    composable(
+                                        route = Screen.StaffSellSeatSelection.route,
+                                        arguments = listOf(
+                                            navArgument("showtimeId") { type = NavType.LongType },
+                                            navArgument("movieTitle") { type = NavType.StringType },
+                                            navArgument("moviePosterUrl") { type = NavType.StringType },
+                                            navArgument("cinemaName") { type = NavType.StringType },
+                                            navArgument("roomName") { type = NavType.StringType },
+                                            navArgument("startTime") { type = NavType.StringType },
+                                            navArgument("basePrice") { type = NavType.FloatType }
+                                        )
+                                    ) { entry ->
+                                        val showtimeId = entry.arguments?.getLong("showtimeId") ?: 0L
+                                        val movieTitle = android.net.Uri.decode(entry.arguments?.getString("movieTitle") ?: "")
+                                        val moviePosterUrl = android.net.Uri.decode(entry.arguments?.getString("moviePosterUrl") ?: "")
+                                        val cinemaName = android.net.Uri.decode(entry.arguments?.getString("cinemaName") ?: "")
+                                        val roomName = android.net.Uri.decode(entry.arguments?.getString("roomName") ?: "")
+                                        val startTime = android.net.Uri.decode(entry.arguments?.getString("startTime") ?: "")
+                                        val basePrice = entry.arguments?.getFloat("basePrice")?.toDouble() ?: 0.0
+                                        val sellVm: StaffSellTicketViewModel = viewModel(viewModelStoreOwner = entry)
+                                        StaffSellSeatSelectionScreen(
+                                            showtimeId = showtimeId,
+                                            movieTitle = movieTitle,
+                                            cinemaName = cinemaName,
+                                            roomName = roomName,
+                                            startTime = startTime,
+                                            basePrice = basePrice,
+                                            viewModel = sellVm,
+                                            onProceedToPayment = { seatIds, total ->
+                                                val seatIdsStr = seatIds.joinToString(",")
+                                                val seatsDisplay = seatIds.size.toString() + " ghế"
+                                                navController.navigate(
+                                                    Screen.StaffSellPayment.createRoute(
+                                                        showtimeId, seatIdsStr, seatsDisplay,
+                                                        total, movieTitle, cinemaName, startTime
+                                                    )
+                                                )
+                                            },
+                                            onBackClick = { navController.popBackStack() }
+                                        )
+                                    }
+
+                                    composable(
+                                        route = Screen.StaffSellPayment.route,
+                                        arguments = listOf(
+                                            navArgument("showtimeId") { type = NavType.LongType },
+                                            navArgument("seatIds") { type = NavType.StringType },
+                                            navArgument("seatsDisplay") { type = NavType.StringType },
+                                            navArgument("totalAmount") { type = NavType.FloatType },
+                                            navArgument("movieTitle") { type = NavType.StringType },
+                                            navArgument("cinemaName") { type = NavType.StringType },
+                                            navArgument("startTime") { type = NavType.StringType }
+                                        )
+                                    ) { entry ->
+                                        val showtimeId = entry.arguments?.getLong("showtimeId") ?: 0L
+                                        val seatIdsStr = android.net.Uri.decode(entry.arguments?.getString("seatIds") ?: "")
+                                        val seatsDisplay = android.net.Uri.decode(entry.arguments?.getString("seatsDisplay") ?: "")
+                                        val total = entry.arguments?.getFloat("totalAmount")?.toDouble() ?: 0.0
+                                        val movieTitle = android.net.Uri.decode(entry.arguments?.getString("movieTitle") ?: "")
+                                        val cinemaName = android.net.Uri.decode(entry.arguments?.getString("cinemaName") ?: "")
+                                        val startTime = android.net.Uri.decode(entry.arguments?.getString("startTime") ?: "")
+                                        val seatIds = seatIdsStr.split(",").mapNotNull { it.toLongOrNull() }
+
+                                        var showSuccess by remember { androidx.compose.runtime.mutableStateOf(false) }
+                                        val sellVm: StaffSellTicketViewModel = viewModel(viewModelStoreOwner = entry)
+
+                                        // Pre-set selected seats from route args
+                                        LaunchedEffect(seatIds) {
+                                            sellVm.selectedSeats.value = seatIds.toSet()
+                                        }
+
+                                        if (showSuccess) {
+                                            StaffPaymentSuccessScreen(
+                                                onSellAnother = {
+                                                    navController.navigate(Screen.StaffSellTicket.route) {
+                                                        popUpTo(Screen.StaffDashboard.route)
+                                                    }
+                                                },
+                                                onGoHome = {
+                                                    navController.navigate(Screen.StaffDashboard.route) {
+                                                        popUpTo(Screen.StaffDashboard.route) { inclusive = true }
+                                                    }
+                                                }
+                                            )
+                                        } else {
+                                            StaffSellPaymentScreen(
+                                                showtimeId = showtimeId,
+                                                seatIds = seatIds,
+                                                seatsDisplay = seatsDisplay,
+                                                totalAmount = total,
+                                                movieTitle = movieTitle,
+                                                cinemaName = cinemaName,
+                                                startTime = startTime,
+                                                viewModel = sellVm,
+                                                onPaymentSuccess = { showSuccess = true },
+                                                onBackClick = { navController.popBackStack() }
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -568,6 +758,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // Xử lý deep link khi app đang chạy và nhận được intent mới (VNPay/MoMo redirect)
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 }
 
@@ -577,4 +773,30 @@ fun NavController.navigateToTab(route: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+/**
+ * Xử lý deep link từ VNPay/MoMo khi redirect về app.
+ * VNPay trả về: cahcinema://payment/result?vnp_ResponseCode=00&vnp_TxnRef=...
+ * MoMo trả về:  cahcinema://payment/result?resultCode=0&orderId=...
+ *
+ * Polling trong PaymentViewModel sẽ tự detect PAID status — hàm này chỉ cần
+ * đưa user về đúng màn hình nếu app bị minimize.
+ */
+fun handlePaymentDeepLink(intent: android.content.Intent?, navController: NavController) {
+    val uri = intent?.data ?: return
+    if (uri.scheme != "cahcinema" || uri.host != "payment") return
+
+    Log.d("DeepLink", "Payment redirect received: $uri")
+
+    // VNPay: vnp_ResponseCode=00 là thành công
+    val vnpCode = uri.getQueryParameter("vnp_ResponseCode")
+    // MoMo: resultCode=0 là thành công
+    val momoCode = uri.getQueryParameter("resultCode")
+
+    val isSuccess = vnpCode == "00" || momoCode == "0"
+    Log.d("DeepLink", "Payment result: ${if (isSuccess) "SUCCESS" else "FAILED"} (vnp=$vnpCode, momo=$momoCode)")
+
+    // Polling trong PaymentViewModel tự xử lý việc cập nhật UI khi nhận PAID status.
+    // Deep link chỉ bring app về foreground — không cần navigate thêm.
 }

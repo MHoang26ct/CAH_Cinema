@@ -1,9 +1,13 @@
 package com.example.cah_cinema.presentation.admin.seats
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cah_cinema.data.model.CancelShowtimesByRoomRequest
 import com.example.cah_cinema.data.model.CreateSeatRequest
+import com.example.cah_cinema.data.model.ReplaceSeatMapRequest
+import com.example.cah_cinema.data.model.SeatItem
 import com.example.cah_cinema.data.repository.AdminRepositoryImpl
 import com.example.cah_cinema.domain.repository.AdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,83 +15,194 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-/**
- * Loại ô trong grid thiết kế sơ đồ ghế.
- * Tọa độ backend dùng x.5 cho aisle, x.0 cho ghế thật.
- *
- * seatTypeId mapping:
- *   1L = REGULAR (ghế thường)
- *   2L = VIP
- *   3L = COUPLE (ghế đôi - phải đặt thành cặp liên tiếp)
- *   4L = AISLE  (lối đi - không gửi lên backend, chỉ dùng để tính tọa độ x.5)
- *   0L = EMPTY  (ô trống, không có ghế)
- */
-const val TYPE_EMPTY = 0L
-const val TYPE_REGULAR = 1L
-const val TYPE_VIP = 2L
-const val TYPE_COUPLE = 3L
-const val TYPE_AISLE = 4L
-
-/**
- * Mỗi ô trong grid thiết kế.
- * gridRow/gridCol: chỉ số 0-based trong grid hiển thị (bao gồm cả hàng/cột aisle)
- * backendRow/backendCol: tọa độ gửi lên backend (x.0 cho ghế, x.5 cho aisle)
- */
-data class GridCell(
-    val gridRow: Int,
-    val gridCol: Int,
-    val backendRow: Double,  // 1.0, 1.5, 2.0, 2.5...
-    val backendCol: Double,  // 1.0, 1.5, 2.0, 2.5...
-    val typeId: Long = TYPE_EMPTY
-) {
-    val isAisleRow: Boolean get() = backendRow % 1.0 != 0.0
-    val isAisleCol: Boolean get() = backendCol % 1.0 != 0.0
-    val isAisle: Boolean get() = isAisleRow || isAisleCol
-    val isSeat: Boolean get() = !isAisle && typeId != TYPE_EMPTY
-}
-
-data class AdminSeatMapState(
-    val roomId: Long = 0,
-    // Grid cells: key = (gridRow, gridCol)
-    val cells: Map<Pair<Int, Int>, GridCell> = emptyMap(),
-    // Kích thước grid (số hàng và cột ghế thật, không tính aisle)
-    val seatRows: Int = 8,   // số hàng ghế thật
-    val seatCols: Int = 10,  // số cột ghế thật
-    val aisleAfterRows: Set<Int> = setOf(3, 6),  // sau hàng ghế thứ mấy thì có aisle ngang
-    val aisleAfterCols: Set<Int> = setOf(3, 7),  // sau cột ghế thứ mấy thì có aisle dọc
-    val isLoading: Boolean = false,
-    val isSaving: Boolean = false,
-    val errorMessage: String? = null,
-    val successMessage: String? = null
-)
+import kotlin.math.abs
 
 class AdminSeatManagementViewModel(
     savedStateHandle: SavedStateHandle,
     private val repository: AdminRepository = AdminRepositoryImpl()
 ) : ViewModel() {
     private val roomId: Long = savedStateHandle["roomId"] ?: 0L
+    private val cinemaId: Long = savedStateHandle["cinemaId"] ?: 0L
 
     private val _state = MutableStateFlow(AdminSeatMapState(roomId = roomId))
     val state: StateFlow<AdminSeatMapState> = _state.asStateFlow()
 
+    // Map: UI typeId (TYPE_REGULAR/VIP/COUPLE/AISLE) → real DB seatTypeId
+    // Populated từ response API, không hardcode
+    private val seatTypeMapping = mutableMapOf<Long, Long>()
+
     init {
-        buildGrid()
+        loadExistingSeats()
     }
 
     /**
-     * Xây dựng grid từ cấu hình hiện tại.
-     * Grid bao gồm cả hàng/cột aisle xen kẽ.
+     * Resolve UI typeId sang real backend seatTypeId.
+     * Nếu chưa có mapping thì fallback về chính UI typeId
+     * (trường hợp DB seed đúng theo thứ tự 1,2,3,4).
      */
+    private fun resolveBackendTypeId(uiTypeId: Long): Long =
+        seatTypeMapping[uiTypeId] ?: uiTypeId
+
+    private fun loadExistingSeats() {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                Log.d("AdminSeatMap", "Loading existing seats for roomId $roomId...")
+                val response = repository.getSeatsByRoom(roomId)
+                Log.d("AdminSeatMap", "Load response: code=${response?.code}, dataSize=${response?.data?.size}")
+
+                if (response?.code in 200..299 && response?.data != null) {
+                    val seats = response.data
+                    if (seats.isNotEmpty()) {
+                        // Extract typeName → seatTypeId mapping từ chính phòng này
+                        extractSeatTypeMapping(seats)
+                        applyLoadedSeats(seats)
+                    } else {
+                        // Phòng mới chưa có ghế — cần bootstrap mapping từ phòng khác
+                        loadSeatTypeMappingFromOtherRoom()
+                        buildGrid()
+                        _state.update { it.copy(isLoading = false, hasExistingSeatMap = false) }
+                    }
+                } else {
+                    loadSeatTypeMappingFromOtherRoom()
+                    buildGrid()
+                    _state.update { it.copy(isLoading = false, hasExistingSeatMap = false) }
+                }
+            } catch (e: Exception) {
+                Log.e("AdminSeatMap", "Error loading seats", e)
+                loadSeatTypeMappingFromOtherRoom()
+                buildGrid()
+                _state.update { it.copy(isLoading = false, hasExistingSeatMap = false) }
+            }
+        }
+    }
+
+    /**
+     * Khi phòng chưa có ghế, lấy seat type mapping từ phòng đầu tiên trong cùng rạp.
+     * Nếu không có phòng nào có ghế, thử tất cả rạp để tìm phòng có ghế.
+     */
+    private suspend fun loadSeatTypeMappingFromOtherRoom() {
+        if (seatTypeMapping.isNotEmpty()) return  // đã có rồi
+
+        try {
+            // Thử lấy danh sách phòng của cùng rạp
+            val rooms = if (cinemaId > 0) {
+                repository.getRoomsByCinema(cinemaId)?.data ?: emptyList()
+            } else emptyList()
+
+            val otherRooms = rooms.filter { it.id != roomId }
+
+            for (room in otherRooms) {
+                val seatsResponse = repository.getSeatsByRoom(room.id)
+                val seats = seatsResponse?.data ?: emptyList()
+                if (seats.isNotEmpty()) {
+                    extractSeatTypeMapping(seats)
+                    Log.d("AdminSeatMap", "Loaded seat type mapping from roomId=${room.id}: $seatTypeMapping")
+                    return
+                }
+            }
+
+            // Nếu không tìm được trong cùng rạp, thử rạp khác
+            if (seatTypeMapping.isEmpty()) {
+                val allCinemas = repository.getCinemas()?.data ?: emptyList()
+                outer@ for (cinema in allCinemas) {
+                    val cinemaRooms = repository.getRoomsByCinema(cinema.id)?.data ?: emptyList()
+                    for (room in cinemaRooms) {
+                        val seatsResponse = repository.getSeatsByRoom(room.id)
+                        val seats = seatsResponse?.data ?: emptyList()
+                        if (seats.isNotEmpty()) {
+                            extractSeatTypeMapping(seats)
+                            Log.d("AdminSeatMap", "Loaded seat type mapping from cinema=${cinema.id} room=${room.id}: $seatTypeMapping")
+                            break@outer
+                        }
+                    }
+                }
+            }
+
+            if (seatTypeMapping.isEmpty()) {
+                Log.w("AdminSeatMap", "Could not resolve seat type mapping — will use UI typeId as fallback")
+            }
+        } catch (e: Exception) {
+            Log.e("AdminSeatMap", "Error loading seat type mapping", e)
+        }
+    }
+
+    /**
+     * Parse danh sách SeatItem và build map: UI_TYPE_ID → DB seatTypeId
+     * Dựa vào typeName của từng ghế.
+     */
+    private fun extractSeatTypeMapping(seats: List<SeatItem>) {
+        seats.forEach { item ->
+            val seatType = item.seatType ?: return@forEach
+            val dbId = seatType.seatTypeId
+            val uiId = when (seatType.typeName.uppercase()) {
+                "NORMAL", "REGULAR" -> TYPE_REGULAR
+                "VIP"               -> TYPE_VIP
+                "COUPLE"            -> TYPE_COUPLE
+                "AISLE"             -> TYPE_AISLE
+                else                -> return@forEach
+            }
+            seatTypeMapping[uiId] = dbId
+        }
+    }
+
+    private fun applyLoadedSeats(seatItems: List<SeatItem>) {
+        if (seatItems.isEmpty()) {
+            buildGrid()
+            _state.update { it.copy(hasExistingSeatMap = false, isLoading = false) }
+            return
+        }
+
+        val realSeats = seatItems.filter { it.seatType?.typeName != "AISLE" }
+        // Tọa độ backend = seatIndex + 1 (do offset +1 khi save).
+        // Nên seatRows = maxBackendRow - 1, seatCols = maxBackendCol - 1
+        val maxBackendRow = realSeats.maxOfOrNull { it.row }?.toInt() ?: 9
+        val maxBackendCol = realSeats.maxOfOrNull { it.col }?.toInt() ?: 11
+        val maxRow = (maxBackendRow - 1).coerceAtLeast(1)
+        val maxCol = (maxBackendCol - 1).coerceAtLeast(1)
+
+        _state.update {
+            it.copy(
+                seatRows = maxRow,
+                seatCols = maxCol,
+                aisleAfterRows = emptySet(),
+                aisleAfterCols = emptySet(),
+                hasExistingSeatMap = true,
+                cells = emptyMap()
+            )
+        }
+        buildGrid()
+
+        val newCells = _state.value.cells.toMutableMap()
+        seatItems.forEach { item ->
+            val typeId = mapSeatTypeName(item.seatType?.typeName ?: "REGULAR")
+            val cellEntry = newCells.entries.find {
+                abs(it.value.backendRow - item.row) < 0.01 &&
+                    abs(it.value.backendCol - item.col) < 0.01
+            }
+            if (cellEntry != null) {
+                newCells[cellEntry.key] = cellEntry.value.copy(typeId = typeId)
+            } else {
+                Log.w("AdminSeatMap", "Seat at ${item.row},${item.col} not found in grid config")
+            }
+        }
+        _state.update { it.copy(cells = newCells, isLoading = false) }
+    }
+
+    private fun mapSeatTypeName(typeName: String): Long = when (typeName) {
+        "VIP" -> TYPE_VIP
+        "COUPLE" -> TYPE_COUPLE
+        "AISLE" -> TYPE_AISLE
+        else -> TYPE_REGULAR
+    }
+
     private fun buildGrid() {
         val s = _state.value
         val cells = mutableMapOf<Pair<Int, Int>, GridCell>()
 
-        // Tính tổng số hàng grid (ghế + aisle ngang)
         val totalGridRows = s.seatRows + s.aisleAfterRows.size
         val totalGridCols = s.seatCols + s.aisleAfterCols.size
 
-        // Map: gridRow → backendRow
         val gridRowToBackend = buildCoordMap(s.seatRows, s.aisleAfterRows)
         val gridColToBackend = buildCoordMap(s.seatCols, s.aisleAfterCols)
 
@@ -109,21 +224,17 @@ class AdminSeatManagementViewModel(
         _state.update { it.copy(cells = cells) }
     }
 
-    /**
-     * Tạo map từ gridIndex → backendCoord.
-     * Ví dụ: seatCount=8, aisleAfter={3,6}
-     *   gridIdx 0→1.0, 1→2.0, 2→3.0, 3→4.0, 4→4.5(aisle), 5→5.0, 6→6.0, 7→7.0, 8→7.5(aisle), 9→8.0
-     */
     private fun buildCoordMap(seatCount: Int, aisleAfter: Set<Int>): Map<Int, Double> {
+        // Backend yêu cầu row/col > 1.0 (DecimalMin inclusive=false),
+        // nên offset tất cả tọa độ thêm 1: ghế thứ 1 → 2.0, thứ 2 → 3.0, ...
         val map = mutableMapOf<Int, Double>()
         var gridIdx = 0
         var seatIdx = 1
         while (seatIdx <= seatCount) {
-            map[gridIdx] = seatIdx.toDouble()
+            map[gridIdx] = (seatIdx + 1).toDouble()   // +1 để thoả > 1.0
             gridIdx++
             if (aisleAfter.contains(seatIdx) && seatIdx < seatCount) {
-                // Thêm aisle sau ghế này
-                map[gridIdx] = seatIdx + 0.5
+                map[gridIdx] = seatIdx + 1.5           // aisle: x.5, cũng đã offset
                 gridIdx++
             }
             seatIdx++
@@ -131,9 +242,6 @@ class AdminSeatManagementViewModel(
         return map
     }
 
-    /**
-     * Tổng số hàng grid (bao gồm aisle)
-     */
     fun totalGridRows(): Int {
         val s = _state.value
         return s.seatRows + s.aisleAfterRows.size
@@ -144,13 +252,6 @@ class AdminSeatManagementViewModel(
         return s.seatCols + s.aisleAfterCols.size
     }
 
-    /**
-     * Nhấn vào ô trong grid:
-     * - Nếu là aisle: không làm gì
-     * - Nếu đang EMPTY → set type
-     * - Nếu đang cùng type → xóa (EMPTY)
-     * - Nếu khác type → đổi type
-     */
     fun onCellClick(gridRow: Int, gridCol: Int, selectedTypeId: Long) {
         val key = gridRow to gridCol
         _state.update { s ->
@@ -164,28 +265,24 @@ class AdminSeatManagementViewModel(
         }
     }
 
-    /**
-     * Cập nhật cấu hình grid (số hàng, cột, vị trí aisle) và rebuild
-     */
     fun updateGridConfig(
         seatRows: Int,
         seatCols: Int,
         aisleAfterRows: Set<Int>,
         aisleAfterCols: Set<Int>
     ) {
-        _state.update { it.copy(
-            seatRows = seatRows,
-            seatCols = seatCols,
-            aisleAfterRows = aisleAfterRows,
-            aisleAfterCols = aisleAfterCols,
-            cells = emptyMap() // reset cells
-        ) }
+        _state.update {
+            it.copy(
+                seatRows = seatRows,
+                seatCols = seatCols,
+                aisleAfterRows = aisleAfterRows,
+                aisleAfterCols = aisleAfterCols,
+                cells = emptyMap()
+            )
+        }
         buildGrid()
     }
 
-    /**
-     * Xóa toàn bộ sơ đồ (reset về EMPTY)
-     */
     fun clearAll() {
         _state.update { s ->
             val newCells = s.cells.mapValues { (_, cell) -> cell.copy(typeId = TYPE_EMPTY) }
@@ -194,9 +291,9 @@ class AdminSeatManagementViewModel(
     }
 
     /**
-     * Lưu sơ đồ ghế lên backend.
-     * Chỉ gửi các ô có typeId != EMPTY và không phải aisle.
-     * Ghế đôi phải đi thành cặp liên tiếp (backend validate).
+     * Lưu sơ đồ ghế:
+     * - Chưa có sơ đồ: POST /admin/seats/create
+     * - Đã có sơ đồ: PUT /admin/seats/replace (room cloning — UI vẫn như edit)
      */
     fun saveSeatMap(onSuccess: () -> Unit) {
         val s = _state.value
@@ -204,45 +301,89 @@ class AdminSeatManagementViewModel(
             .filter { it.isSeat && it.typeId != TYPE_AISLE }
             .sortedWith(compareBy({ it.backendRow }, { it.backendCol }))
 
+        Log.d("AdminSeatMap", "Preparing to save ${seatCells.size} seats for roomId $roomId")
+
         if (seatCells.isEmpty()) {
             _state.update { it.copy(errorMessage = "Chưa có ghế nào trong sơ đồ") }
             return
         }
 
-        // Validate ghế đôi phải đi thành cặp
         val coupleSeats = seatCells.filter { it.typeId == TYPE_COUPLE }
         if (coupleSeats.size % 2 != 0) {
             _state.update { it.copy(errorMessage = "Ghế đôi phải đi thành cặp (số lượng lẻ)") }
             return
         }
 
-        // Build request list - aisle cells gửi với seatTypeId = 4 (AISLE)
-        // Nhưng backend không nhận AISLE qua API create, chỉ dùng tọa độ x.5
-        // Nên ta chỉ gửi ghế thật (không gửi aisle)
         val requests = seatCells.map { cell ->
             CreateSeatRequest(
                 roomId = roomId,
                 row = cell.backendRow,
                 col = cell.backendCol,
-                seatTypeId = cell.typeId
+                seatTypeId = resolveBackendTypeId(cell.typeId)  // map UI typeId → real DB id
             )
         }
 
         _state.update { it.copy(isSaving = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                // Xóa sơ đồ cũ trước (ignore error nếu chưa có)
-                try { repository.deleteSeatsByRoom(roomId) } catch (_: Exception) {}
+                val response = if (s.hasExistingSeatMap) {
+                    Log.d("AdminSeatMap", "Replacing seat map via PUT /admin/seats/replace...")
+                    repository.replaceSeatMap(ReplaceSeatMapRequest(roomId, requests))
+                } else {
+                    Log.d("AdminSeatMap", "Creating seat map via POST /admin/seats/create...")
+                    repository.createSeats(requests)
+                }
+                Log.d("AdminSeatMap", "Save response: code=${response?.code}, message=${response?.message}")
 
-                val response = repository.createSeats(requests)
                 if (response?.code in 200..299) {
-                    _state.update { it.copy(isSaving = false, successMessage = "Lưu sơ đồ ghế thành công!") }
+                    val msg = if (s.hasExistingSeatMap) {
+                        "Cập nhật sơ đồ ghế thành công. Suất chiếu sau 7 ngày đã chuyển sang phòng mới."
+                    } else {
+                        "Lưu sơ đồ ghế thành công!"
+                    }
+                    _state.update { it.copy(isSaving = false, successMessage = msg) }
                     onSuccess()
                 } else {
-                    _state.update { it.copy(isSaving = false, errorMessage = response?.message ?: "Lỗi lưu sơ đồ") }
+                    val errorMsg = response?.message ?: "Lỗi lưu sơ đồ (${response?.code})"
+                    Log.e("AdminSeatMap", "Save failed: $errorMsg")
+                    _state.update { it.copy(isSaving = false, errorMessage = errorMsg) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isSaving = false, errorMessage = e.message) }
+                Log.e("AdminSeatMap", "Exception saving seat map", e)
+                _state.update { it.copy(isSaving = false, errorMessage = e.message ?: "Lỗi kết nối") }
+            }
+        }
+    }
+
+    fun cancelShowtimesByRoom(fromDate: String, toDate: String, reason: String, onSuccess: () -> Unit) {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                val response = repository.cancelShowtimesByRoom(
+                    CancelShowtimesByRoomRequest(
+                        roomId = roomId,
+                        fromDate = fromDate,
+                        toDate = toDate,
+                        reason = reason.ifBlank { null }
+                    )
+                )
+                if (response?.code in 200..299) {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            successMessage = response?.message ?: "Đã hủy suất chiếu thành công"
+                        )
+                    }
+                    onSuccess()
+                } else {
+                    _state.update {
+                        it.copy(isLoading = false, errorMessage = response?.message ?: "Lỗi hủy suất chiếu")
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi kết nối")
+                }
             }
         }
     }

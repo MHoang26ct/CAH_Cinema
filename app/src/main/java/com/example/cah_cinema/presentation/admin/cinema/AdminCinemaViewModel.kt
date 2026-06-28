@@ -2,6 +2,7 @@ package com.example.cah_cinema.presentation.admin.cinema
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cah_cinema.data.model.*
@@ -46,7 +47,7 @@ class AdminCinemaViewModel(
                     _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi tải rạp") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _state.update { it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi kết nối, vui lòng thử lại") }
             }
         }
     }
@@ -79,7 +80,7 @@ class AdminCinemaViewModel(
                     _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi tạo rạp") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _state.update { it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi kết nối, vui lòng thử lại") }
             }
         }
     }
@@ -88,7 +89,12 @@ class AdminCinemaViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                val resp = repository.updateCinema(cinemaId, CreateCinemaRequest(name, address, hotline, imageUrl))
+                Log.d("AdminCinema", "Updating cinema $cinemaId: name=$name, imageUrl=$imageUrl")
+                val resp = repository.updateCinema(
+                    cinemaId,
+                    UpdateCinemaRequest(cinemaId = cinemaId, name = name, address = address, hotline = hotline, imageUrl = imageUrl)
+                )
+                Log.d("AdminCinema", "Update response: ${resp?.code} - ${resp?.message}")
                 if (resp != null && resp.code in 200..299) {
                     _state.update { it.copy(successMessage = "Cập nhật rạp thành công") }
                     onSuccess()
@@ -97,7 +103,8 @@ class AdminCinemaViewModel(
                     _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi cập nhật") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                Log.e("AdminCinema", "Exception updating cinema", e)
+                _state.update { it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi kết nối, vui lòng thử lại") }
             }
         }
     }
@@ -112,25 +119,26 @@ class AdminCinemaViewModel(
                     _state.update { it.copy(errorMessage = resp?.message ?: "Xóa thất bại") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(errorMessage = e.message) }
+                _state.update { it.copy(errorMessage = e.message ?: "Lỗi kết nối, vui lòng thử lại") }
             }
         }
     }
 
-    fun createRoom(cinemaId: Long, roomName: String, onSuccess: () -> Unit) {
+    fun createRoom(cinemaId: Long, roomName: String, onSuccess: (Long) -> Unit) {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             try {
                 val resp = repository.createRoom(cinemaId, CreateRoomRequest(cinemaId, roomName))
                 if (resp != null && resp.code in 200..299) {
+                    val newRoomId = resp.data?.id ?: 0L
                     _state.update { it.copy(isLoading = false, successMessage = "Tạo phòng thành công") }
-                    onSuccess()
                     loadRooms(cinemaId)
+                    onSuccess(newRoomId)
                 } else {
                     _state.update { it.copy(isLoading = false, errorMessage = resp?.message ?: "Lỗi tạo phòng") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+                _state.update { it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi kết nối, vui lòng thử lại") }
             }
         }
     }
@@ -145,7 +153,7 @@ class AdminCinemaViewModel(
                     _state.update { it.copy(errorMessage = resp?.message ?: "Xóa phòng thất bại") }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(errorMessage = e.message) }
+                _state.update { it.copy(errorMessage = e.message ?: "Lỗi kết nối, vui lòng thử lại") }
             }
         }
     }

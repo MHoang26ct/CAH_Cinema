@@ -1,19 +1,20 @@
 package com.example.cah_cinema.presentation.user.booking
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.cah_cinema.data.model.ConfirmPaymentRequest
-import com.example.cah_cinema.data.model.CreateBookingRequest
-import com.example.cah_cinema.data.model.FoodOrderItemRequest
+import com.example.cah_cinema.data.model.*
 import com.example.cah_cinema.data.remote.RetrofitClient
-import com.example.cah_cinema.util.ImageUrls
+import com.example.cah_cinema.util.DateTimeUtils
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class PaymentUiState(
     // Thông tin phim
@@ -53,13 +54,18 @@ data class PaymentUiState(
     val totalAmount: Double = 0.0,
     val finalAmount: Double = 0.0,
 
-    val selectedPaymentMethod: PaymentMethod = PaymentMethod.CASH,
+    val selectedPaymentMethod: PaymentMethod = PaymentMethod.VNPAY,
 
     // Booking result
     val bookingId: Long? = null,
     val isPaymentSuccessful: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    
+    // E-Payment info
+    val paymentUrl: String? = null,
+    val qrCodeUrl: String? = null,
+    val isWaitingForPayment: Boolean = false
 ) {
     val timeLeftFormatted: String
         get() {
@@ -78,9 +84,7 @@ data class ConcessionSummaryItem(
 )
 
 enum class PaymentMethod(val displayName: String) {
-    CASH("CASH"),
-    VNPAY("VNPAY"),
-    MOMO("MOMO")
+    VNPAY("VNPAY")
 }
 
 class PaymentViewModel(
@@ -96,6 +100,7 @@ class PaymentViewModel(
 
     // Food items được set từ ConcessionScreen trước khi navigate sang đây
     private var pendingFoodItems: List<ConcessionSummaryItem> = emptyList()
+    private var pollingJob: Job? = null
 
     private val _uiState = MutableStateFlow(PaymentUiState())
     val uiState: StateFlow<PaymentUiState> = _uiState.asStateFlow()
@@ -106,13 +111,13 @@ class PaymentViewModel(
             else seatsDisplay.split(", ")
         } else emptyList()
 
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            state.copy(
                 selectedSeats = seatList,
                 ticketQuantity = seatList.size,
                 totalAmount = totalAmountArg.toDouble(),
                 finalAmount = totalAmountArg.toDouble(),
-                date = dateArg,
+                date = DateTimeUtils.navDateToDisplay(dateArg),
                 showtime = timeArg
             )
         }
@@ -128,51 +133,34 @@ class PaymentViewModel(
 
         viewModelScope.launch {
             try {
-                val movieResponse = RetrofitClient.apiService.getMovieDetail(mId)
-                if (movieResponse.isSuccessful) {
-                    val movie = movieResponse.body()?.data
-                    _uiState.update { it.copy(
-                        movieTitle = movie?.title ?: "",
-                        posterUrl = movie?.posterUrl ?: "",
-                        movieAge = movie?.ageRating ?: "T13",
-                        duration = "${movie?.duration ?: 0} phút"
-                    ) }
+                val context = loadBookingShowtimeContext(mId, stId, dateArg)
+                _uiState.update { state ->
+                    state.copy(
+                        movieTitle = context.movie?.title ?: state.movieTitle,
+                        posterUrl = context.movie?.posterUrl ?: state.posterUrl,
+                        movieAge = context.movie?.age ?: state.movieAge,
+                        duration = context.movie?.duration ?: state.duration,
+                        cinemaName = context.cinemaName.ifBlank { state.cinemaName },
+                        room = context.roomName.ifBlank { state.room }
+                    )
                 }
-
-                // Load cinema/room info from showtimes
-                val normalizedDate = dateArg.replace("-", "/")
-                val dateParts = normalizedDate.split("/")
-                val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-                val apiDate = if (dateParts.size == 2) "$currentYear-${dateParts[1]}-${dateParts[0]}" else ""
-                
-                if (apiDate.isNotEmpty()) {
-                    val stResponse = RetrofitClient.apiService.getShowtimesByMovie(mId, apiDate)
-                    if (stResponse.isSuccessful) {
-                        stResponse.body()?.data?.cinemas?.forEach { cinema ->
-                            val match = cinema.showtimes.find { it.id == stId }
-                            if (match != null) {
-                                _uiState.update { it.copy(
-                                    cinemaName = cinema.cinemaName,
-                                    room = match.roomName
-                                ) }
-                            }
-                        }
-                    }
-                }
-            } catch (_: Exception) {}
+            } catch (_: Exception) { }
         }
     }
 
-    /**
-     * Được gọi từ ConcessionScreen để truyền danh sách đồ ăn đã chọn.
-     */
     fun setFoodItems(items: List<ConcessionSummaryItem>) {
         pendingFoodItems = items
         val concessionTotal = items.sumOf { it.unitPrice * it.quantity }
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            // Tính lại totalAmount = tiền ghế (từ nav arg) + tiền bắp nước
+            val newTotal = totalAmountArg.toDouble() + concessionTotal
+            // Cập nhật finalAmount theo voucher đã áp dụng (nếu có)
+            val newFinal = (newTotal - state.discount).coerceAtLeast(0.0)
+            state.copy(
                 concessionSummary = items,
-                concessionTotal = concessionTotal
+                concessionTotal = concessionTotal,
+                totalAmount = newTotal,
+                finalAmount = newFinal
             )
         }
     }
@@ -181,22 +169,23 @@ class PaymentViewModel(
         viewModelScope.launch {
             while (_uiState.value.timeLeftSeconds > 0 && !_uiState.value.isPaymentSuccessful) {
                 delay(1000)
-                _uiState.update { it.copy(timeLeftSeconds = it.timeLeftSeconds - 1) }
+                _uiState.update { state -> state.copy(timeLeftSeconds = state.timeLeftSeconds - 1) }
             }
             if (_uiState.value.timeLeftSeconds <= 0 && !_uiState.value.isPaymentSuccessful) {
-                _uiState.update { it.copy(isTimeout = true) }
+                _uiState.update { state -> state.copy(isTimeout = true) }
+                stopPolling()
             }
         }
     }
 
     fun onPaymentMethodSelected(method: PaymentMethod) {
-        _uiState.update { it.copy(selectedPaymentMethod = method) }
+        _uiState.update { state -> state.copy(selectedPaymentMethod = method) }
     }
 
     fun applyVoucher(voucherName: String, voucherId: Long, discountAmount: Double) {
-        _uiState.update {
-            val newFinalAmount = (it.totalAmount - discountAmount).coerceAtLeast(0.0)
-            it.copy(
+        _uiState.update { state ->
+            val newFinalAmount = (state.totalAmount - discountAmount).coerceAtLeast(0.0)
+            state.copy(
                 selectedVoucherName = voucherName,
                 selectedVoucherId = voucherId,
                 voucherDiscount = discountAmount,
@@ -217,11 +206,32 @@ class PaymentViewModel(
             return
         }
 
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        _uiState.update { state -> state.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
             try {
-                // Bước 1: Tạo booking với đầy đủ food items và voucherId
+                // Bước 0: Unlock ghế trước rồi re-lock lại để gia hạn TTL
+                // Lý do: lockSeat dùng Redis SET NX (setIfAbsent) — chỉ thành công nếu key CHƯA tồn tại.
+                // Nếu user đang giữ ghế (key đã tồn tại dù do chính họ), preLockSeats sẽ thất bại.
+                // Giải pháp: unlock hết trước, sau đó lock lại để gia hạn TTL.
+                sIds.forEach { seatId ->
+                    try { RetrofitClient.apiService.unlockSeat(seatId, stId) } catch (_: Exception) { }
+                }
+
+                val reLockResponse = RetrofitClient.apiService.preLockSeats(
+                    PreLockRequest(showtimeId = stId, seatIds = sIds)
+                )
+                if (!reLockResponse.isSuccessful) {
+                    val errMsg = when (reLockResponse.code()) {
+                        400 -> "Ghế đã bị người khác đặt mất trong khi chờ. Vui lòng chọn ghế lại."
+                        401 -> "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại."
+                        else -> "Không thể giữ ghế (lỗi ${reLockResponse.code()}). Vui lòng thử lại."
+                    }
+                    _uiState.update { state -> state.copy(isLoading = false, errorMessage = errMsg) }
+                    return@launch
+                }
+
+                // Bước 1: Tạo booking
                 val foodItems = pendingFoodItems
                     .filter { it.quantity > 0 }
                     .map { FoodOrderItemRequest(foodId = it.foodId, quantity = it.quantity) }
@@ -235,43 +245,135 @@ class PaymentViewModel(
                     foodItems = foodItems
                 )
 
-                val bookingResponse = RetrofitClient.apiService.createBooking(request)
-                if (!bookingResponse.isSuccessful || bookingResponse.body()?.code != 200) {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = bookingResponse.body()?.message ?: "Đặt vé thất bại"
-                        )
+                var bookingResponse = RetrofitClient.apiService.createBooking(request)
+
+                // Workaround: nếu backend 500 khi có foodItems (bug backend với @CreatedDate),
+                // thử lại không kèm food để user vẫn đặt được vé.
+                // LƯU Ý: khi backend 500, catch block của BookingService gọi releaseSeatLocksByOwner
+                // → Redis key bị xóa → cần re-lock lại trước khi retry.
+                if (bookingResponse.code() == 500 && !foodItems.isNullOrEmpty()) {
+                    Log.w("PaymentVM", "createBooking 500 with foodItems, re-locking and retrying without food...")
+
+                    // Re-lock ghế vì backend đã release lock trong catch block
+                    sIds.forEach { seatId ->
+                        try { RetrofitClient.apiService.unlockSeat(seatId, stId) } catch (_: Exception) { }
                     }
+                    val reLockRetry = RetrofitClient.apiService.preLockSeats(
+                        PreLockRequest(showtimeId = stId, seatIds = sIds)
+                    )
+                    if (!reLockRetry.isSuccessful) {
+                        _uiState.update { state -> state.copy(isLoading = false, errorMessage = "Ghế không còn khả dụng. Vui lòng chọn lại.") }
+                        return@launch
+                    }
+
+                    val requestNoFood = request.copy(foodItems = null)
+                    bookingResponse = RetrofitClient.apiService.createBooking(requestNoFood)
+                    if (bookingResponse.isSuccessful && bookingResponse.body()?.code == 200) {
+                        // Cập nhật lại UI: bỏ phần bắp nước khỏi tổng
+                        val concessionTotal = _uiState.value.concessionTotal
+                        _uiState.update { state ->
+                            state.copy(
+                                concessionSummary = emptyList(),
+                                concessionTotal = 0.0,
+                                totalAmount = (state.totalAmount - concessionTotal).coerceAtLeast(0.0),
+                                finalAmount = (state.finalAmount - concessionTotal).coerceAtLeast(0.0)
+                            )
+                        }
+                    }
+                }
+
+                if (!bookingResponse.isSuccessful || bookingResponse.body()?.code != 200) {
+                    val httpCode = bookingResponse.code()
+                    val bodyMsg = bookingResponse.body()?.message
+                    val errMsg = when {
+                        httpCode == 500 -> "Hệ thống đang gặp sự cố, vui lòng thử lại sau."
+                        bodyMsg != null -> bodyMsg
+                        else -> "Đặt vé thất bại (lỗi $httpCode)"
+                    }
+                    // Chỉ unlock ghế khi lỗi nghiệp vụ (4xx), không unlock khi lỗi server (5xx)
+                    if (httpCode in 400..499) {
+                        unlockSeats(stId, sIds)
+                    }
+                    _uiState.update { state -> state.copy(isLoading = false, errorMessage = errMsg) }
                     return@launch
                 }
 
-                val bookingData = bookingResponse.body()?.data
-                val bookingId = bookingData?.id ?: run {
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "Không nhận được mã booking") }
+                val bookingId = bookingResponse.body()?.data?.id ?: run {
+                    unlockSeats(stId, sIds)
+                    _uiState.update { state -> state.copy(isLoading = false, errorMessage = "Không nhận được mã booking") }
                     return@launch
                 }
+                _uiState.update { state -> state.copy(bookingId = bookingId) }
 
-                _uiState.update { it.copy(bookingId = bookingId) }
-
-                // Bước 2: Xác nhận thanh toán
-                val paymentMethod = _uiState.value.selectedPaymentMethod
-                val confirmRequest = ConfirmPaymentRequest(
-                    paymentRef = "PAY-$bookingId-${System.currentTimeMillis()}",
-                    gateway = paymentMethod.displayName
-                )
-
-                val confirmResponse = RetrofitClient.apiService.confirmPayment(bookingId, confirmRequest)
-                if (confirmResponse.isSuccessful || confirmResponse.body()?.code == 200) {
-                    _uiState.update { it.copy(isPaymentSuccessful = true, isLoading = false) }
-                } else {
-                    // Booking đã tạo nhưng confirm thất bại — vẫn coi là thành công để user lấy vé
-                    _uiState.update { it.copy(isPaymentSuccessful = true, isLoading = false) }
+                // Bước 2: Xử lý theo phương thức thanh toán
+                when (_uiState.value.selectedPaymentMethod) {
+                    PaymentMethod.VNPAY -> {
+                        val vnpayResp = RetrofitClient.apiService.createVNPayPayment(bookingId, VNPayPaymentRequest(requestId = UUID.randomUUID().toString()))
+                        if (vnpayResp.isSuccessful && vnpayResp.body()?.code == 200) {
+                            val data = vnpayResp.body()?.data
+                            _uiState.update { state -> state.copy(
+                                paymentUrl = data?.payUrl,
+                                isWaitingForPayment = true,
+                                isLoading = false
+                            ) }
+                            startStatusPolling(bookingId)
+                        } else {
+                            _uiState.update { state -> state.copy(isLoading = false, errorMessage = "Lỗi kết nối cổng VNPay") }
+                        }
+                    }
                 }
 
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Lỗi kết nối") }
+                // Exception không mong muốn → thử unlock ghế
+                unlockSeats(stId, sIds)
+                _uiState.update { state -> state.copy(isLoading = false, errorMessage = e.message ?: "Lỗi kết nối") }
             }
         }
+    }
+
+    /** Unlock tất cả ghế đã chọn khi booking/payment thất bại */
+    private fun unlockSeats(showtimeId: Long, seatIds: List<Long>) {
+        viewModelScope.launch {
+            seatIds.forEach { seatId ->
+                try {
+                    RetrofitClient.apiService.unlockSeat(seatId, showtimeId)
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
+    private fun startStatusPolling(bookingId: Long) {
+        pollingJob?.cancel()
+        pollingJob = viewModelScope.launch {
+            while (true) {
+                delay(3000) // Poll mỗi 3 giây
+                try {
+                    val resp = RetrofitClient.apiService.getBookingStatus(bookingId)
+                    if (resp.isSuccessful) {
+                        val status = resp.body()?.data?.status
+                        Log.d("PaymentPolling", "Booking $bookingId status: $status")
+                        if (status == "PAID") {
+                            _uiState.update { state -> state.copy(isPaymentSuccessful = true, isWaitingForPayment = false) }
+                            break
+                        } else if (status == "FAILED" || status == "CANCELLED") {
+                            _uiState.update { state -> state.copy(isWaitingForPayment = false, errorMessage = "Giao dịch thất bại hoặc đã bị hủy") }
+                            break
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("PaymentPolling", "Polling error", e)
+                }
+            }
+        }
+    }
+
+    private fun stopPolling() {
+        pollingJob?.cancel()
+        pollingJob = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopPolling()
     }
 }

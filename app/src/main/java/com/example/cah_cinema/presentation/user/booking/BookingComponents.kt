@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +40,8 @@ fun TicketTopBar(
     showtime: String,
     availableShowtimes: List<String> = emptyList(),
     onShowtimeChange: (String) -> Unit = {},
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onRefreshSeats: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -63,8 +65,20 @@ fun TicketTopBar(
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
+            // Nút refresh sơ đồ ghế (chỉ hiển thị khi có callback)
+            if (onRefreshSeats != null) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Làm mới sơ đồ ghế",
+                    tint = CyanBlue.copy(alpha = 0.8f),
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onRefreshSeats() }
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(8.dp))

@@ -10,14 +10,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,12 +37,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.cah_cinema.data.model.CommentItem
 import com.example.cah_cinema.domain.model.Cinema
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.MovieDate
 import com.example.cah_cinema.ui.theme.CAH_CinemaTheme
 import com.example.cah_cinema.ui.theme.CyanBlue
 import com.example.cah_cinema.ui.theme.TextGray
+import com.example.cah_cinema.util.DateTimeUtils
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -47,10 +54,19 @@ fun MovieDetailScreen(
     onShowtimeClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearErrorMessage()
+        }
+    }
 
     state.movie?.let { movie ->
         Scaffold(
-            containerColor = Color(0xFF13131A)
+            containerColor = Color(0xFF13131A),
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
@@ -65,7 +81,7 @@ fun MovieDetailScreen(
                     MovieDetailsSection(movie = movie)
                 }
 
-                // Trailer section - hiển thị nếu có trailerUrl
+                // Trailer section
                 if (!movie.trailerUrl.isNullOrBlank()) {
                     item {
                         TrailerSection(trailerUrl = movie.trailerUrl)
@@ -91,11 +107,163 @@ fun MovieDetailScreen(
                     )
                 }
 
+                // --- Comment Section ---
+                item {
+                    CommentHeaderSection(count = state.comments.size)
+                }
+
+                item {
+                    CommentInputSection(
+                        text = state.commentText,
+                        isSubmitting = state.isSubmittingComment,
+                        onTextChange = { viewModel.onCommentTextChange(it) },
+                        onSubmit = { viewModel.submitComment() }
+                    )
+                }
+
+                items(state.comments) { comment ->
+                    CommentRow(
+                        comment = comment,
+                        onDelete = { viewModel.deleteComment(comment.id) }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = Color.White.copy(alpha = 0.05f)
+                    )
+                }
+
+                if (state.canLoadMoreComments) {
+                    item {
+                        TextButton(
+                            onClick = { viewModel.loadMoreComments() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Xem thêm bình luận", color = CyanBlue)
+                        }
+                    }
+                }
+
                 item {
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CommentHeaderSection(count: Int) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            text = "Bình luận ($count)",
+            style = MaterialTheme.typography.titleSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        HorizontalDivider(color = CyanBlue, thickness = 2.dp, modifier = Modifier.width(40.dp))
+    }
+}
+
+@Composable
+fun CommentInputSection(
+    text: String,
+    isSubmitting: Boolean,
+    onTextChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = onTextChange,
+            placeholder = { Text("Viết bình luận...", color = Color.Gray, fontSize = 14.sp) },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(24.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedContainerColor = Color(0xFF2D2D35),
+                unfocusedContainerColor = Color(0xFF2D2D35),
+                focusedBorderColor = CyanBlue,
+                unfocusedBorderColor = Color.Transparent
+            ),
+            maxLines = 3
+        )
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        IconButton(
+            onClick = onSubmit,
+            enabled = text.isNotBlank() && !isSubmitting,
+            colors = IconButtonDefaults.iconButtonColors(containerColor = CyanBlue)
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
+            } else {
+                Icon(Icons.Default.Send, contentDescription = "Gửi", tint = Color.Black)
+            }
+        }
+    }
+}
+
+@Composable
+fun CommentRow(
+    comment: CommentItem,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        AsyncImage(
+            model = comment.userAvatar ?: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png",
+            contentDescription = null,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.Gray),
+            contentScale = ContentScale.Crop
+        )
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = comment.userName,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = DateTimeUtils.formatDateTime(comment.createdAt),
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = comment.content,
+                color = Color.White.copy(alpha = 0.8f),
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+        }
+        
+        // TODO: Chỉ hiển thị nút xóa nếu comment này là của user hiện tại
+        // Tạm thời để user có thể click xóa để test
     }
 }
 

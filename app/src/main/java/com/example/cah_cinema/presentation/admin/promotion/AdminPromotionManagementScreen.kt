@@ -34,8 +34,7 @@ import com.example.cah_cinema.presentation.admin.components.AdminScaffold
 import com.example.cah_cinema.presentation.admin.components.AdminTextField
 import com.example.cah_cinema.presentation.admin.promotion.AdminPromotionState
 import com.example.cah_cinema.ui.theme.*
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.example.cah_cinema.util.DateTimeUtils
 
 @Composable
 fun AdminPromotionManagementScreen(
@@ -44,7 +43,7 @@ fun AdminPromotionManagementScreen(
     val state by viewModel.state.collectAsState()
     AdminPromotionManagementContent(
         state = state,
-        onAddClick = { viewModel.loadPromotions() /* or other action if needed */ },
+        onAddClick = { viewModel.loadPromotions() },
         onEdit = { viewModel.loadPromotionDetail(it.id) },
         onDelete = { viewModel.deletePromotion(it) },
         onUploadImage = { context, uri, callback -> viewModel.uploadImage(context, uri, callback) },
@@ -233,8 +232,12 @@ fun PromotionRow(
         }
         
         Column(modifier = Modifier.weight(2f)) {
-            Text(text = "Từ: ${promotion.startAt ?: "N/A"}", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
-            Text(text = "Đến: ${promotion.expiredAt ?: "N/A"}", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+            if (!promotion.startAt.isNullOrBlank()) {
+                Text(text = "Từ: ${promotion.startAt}", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                Text(text = "Đến: ${promotion.expiredAt ?: "N/A"}", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+            } else {
+                Text(text = "Tạo: ${DateTimeUtils.formatDateTime(promotion.createdAt)}", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+            }
         }
 
         Surface(
@@ -273,7 +276,6 @@ fun PromotionFormDialog(
     onConfirm: (CreateOrUpdatePromotionRequest) -> Unit
 ) {
     val context = LocalContext.current
-    val gson = Gson()
 
     var promoTitle by remember { mutableStateOf(initialDetail?.title ?: "") }
     var description by remember { mutableStateOf(initialDetail?.description ?: "") }
@@ -282,36 +284,30 @@ fun PromotionFormDialog(
     // Parse dates
     val initialStart = initialDetail?.startAt ?: "2026-01-01"
     val startParts = initialStart.split("-")
-    var startDay by remember { mutableStateOf(if (startParts.size == 3) startParts[2] else "01") }
-    var startMonth by remember { mutableStateOf(if (startParts.size == 3) startParts[1] else "01") }
-    var startYear by remember { mutableStateOf(if (startParts.size == 3) startParts[0] else "2026") }
+    var startDay by remember { mutableStateOf(if (startParts.size >= 3) startParts[2].take(2) else "01") }
+    var startMonth by remember { mutableStateOf(if (startParts.size >= 2) startParts[1] else "01") }
+    var startYear by remember { mutableStateOf(if (startParts.size >= 1) startParts[0] else "2026") }
 
     val initialEnd = initialDetail?.expiredAt ?: "2026-12-31"
     val endParts = initialEnd.split("-")
-    var endDay by remember { mutableStateOf(if (endParts.size == 3) endParts[2] else "31") }
-    var endMonth by remember { mutableStateOf(if (endParts.size == 3) endParts[1] else "12") }
-    var endYear by remember { mutableStateOf(if (endParts.size == 3) endParts[0] else "2026") }
+    var endDay by remember { mutableStateOf(if (endParts.size >= 3) endParts[2].take(2) else "31") }
+    var endMonth by remember { mutableStateOf(if (endParts.size >= 2) endParts[1] else "12") }
+    var endYear by remember { mutableStateOf(if (endParts.size >= 1) endParts[0] else "2026") }
 
     var isActive by remember { mutableStateOf(initialDetail?.isActive ?: true) }
 
-    // Multi-line list inputs
+    // Multi-line list inputs - Nối bằng '@' theo logic backend
     val conditions = remember { 
         mutableStateListOf<String>().apply {
             initialDetail?.conditions?.let {
-                try {
-                    val list: List<String> = gson.fromJson(it, object : TypeToken<List<String>>() {}.type)
-                    addAll(list)
-                } catch (_: Exception) {}
+                if (it.isNotBlank()) addAll(it.split("@"))
             }
         }
     }
     val notes = remember { 
         mutableStateListOf<String>().apply {
             initialDetail?.notes?.let {
-                try {
-                    val list: List<String> = gson.fromJson(it, object : TypeToken<List<String>>() {}.type)
-                    addAll(list)
-                } catch (_: Exception) {}
+                if (it.isNotBlank()) addAll(it.split("@"))
             }
         }
     }
@@ -395,14 +391,18 @@ fun PromotionFormDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val startAt = "$startYear-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}"
-                    val expiredAt = "$endYear-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}"
+                    val startAt = "${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}"
+                    val expiredAt = "${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}"
+                    
+                    val conditionsText = conditions.joinToString("@")
+                    val notesText = notes.joinToString("@")
+
                     onConfirm(CreateOrUpdatePromotionRequest(
                         title = promoTitle,
                         description = description,
                         imageUrl = imageUrl,
-                        conditions = conditions.toList(),
-                        notes = notes.toList(),
+                        conditions = conditionsText,
+                        notes = notesText,
                         startAt = startAt,
                         expiredAt = expiredAt,
                         isActive = isActive
@@ -426,8 +426,26 @@ fun AdminPromotionManagementPreview() {
         AdminPromotionManagementContent(
             state = AdminPromotionState(
                 promotions = listOf(
-                    AdminPromotionItem(1L, "ƯU ĐÃI HỌC SINH SINH VIÊN", "Giá vé chỉ từ 45k cho HSSV", "https://via.placeholder.com/300x160", "2026-01-01", "2026-12-31", true),
-                    AdminPromotionItem(2L, "GIẢM 50% COMBO BẮP NƯỚC", "Áp dụng khi mua kèm 2 vé", "https://via.placeholder.com/300x160", "2026-05-01", "2026-05-31", false)
+                    AdminPromotionItem(
+                        id = 1L, 
+                        title = "ƯU ĐÃI HỌC SINH SINH VIÊN", 
+                        description = "Giá vé chỉ từ 45k cho HSSV", 
+                        imageUrl = "https://via.placeholder.com/300x160", 
+                        startAt = "2026-05-17", 
+                        expiredAt = "2026-12-31", 
+                        isActive = true, 
+                        createdAt = "2026-05-17T10:00:00"
+                    ),
+                    AdminPromotionItem(
+                        id = 2L, 
+                        title = "GIẢM 50% COMBO BẮP NƯỚC", 
+                        description = "Áp dụng khi mua kèm 2 vé", 
+                        imageUrl = "https://via.placeholder.com/300x160", 
+                        startAt = "2026-05-18", 
+                        expiredAt = "2026-06-18", 
+                        isActive = false, 
+                        createdAt = "2026-05-18T12:00:00"
+                    )
                 ),
                 isLoading = false
             ),

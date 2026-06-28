@@ -81,6 +81,13 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
+
+    // CameraX for QR scanning
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.accompanist.permissions)
     
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

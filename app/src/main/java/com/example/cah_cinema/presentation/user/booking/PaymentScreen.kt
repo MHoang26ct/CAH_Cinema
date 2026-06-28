@@ -1,5 +1,7 @@
 package com.example.cah_cinema.presentation.user.booking
 
+import com.example.cah_cinema.presentation.user.booking.formatPrice
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +42,7 @@ fun PaymentScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     // Áp dụng voucher khi nhận từ màn hình chọn voucher
     LaunchedEffect(voucherName, voucherId, voucherDiscount) {
@@ -52,6 +57,17 @@ fun PaymentScreen(
 
     LaunchedEffect(uiState.isPaymentSuccessful) {
         if (uiState.isPaymentSuccessful) onPaymentSuccess()
+    }
+
+    // Tự động mở URL thanh toán khi có payUrl (VNPay/MoMo)
+    LaunchedEffect(uiState.paymentUrl) {
+        val url = uiState.paymentUrl
+        if (!url.isNullOrBlank() && uiState.isWaitingForPayment) {
+            try {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                context.startActivity(intent)
+            } catch (_: Exception) { /* fallback: user bấm nút thủ công */ }
+        }
     }
 
     // Dialog hết giờ
@@ -84,13 +100,25 @@ fun PaymentScreen(
             )
         },
         bottomBar = {
-            BookingBottomBar(
-                totalTickets = uiState.ticketQuantity,
-                totalAmount = uiState.finalAmount,
-                onBookClick = { viewModel.onPaymentClick() },
-                buttonText = if (uiState.isLoading) "ĐANG XỬ LÝ..." else "THANH TOÁN",
-                enabled = !uiState.isLoading
-            )
+            if (uiState.isWaitingForPayment) {
+                PaymentWaitingBottomBar(
+                    onCancel = { /* Logic hủy polling hoặc quay lại */ },
+                    onOpenApp = {
+                        uiState.paymentUrl?.let {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(it))
+                            context.startActivity(intent)
+                        }
+                    }
+                )
+            } else {
+                PaymentBookingBottomBar(
+                    totalTickets = uiState.ticketQuantity,
+                    totalAmount = uiState.finalAmount,
+                    onBookClick = { viewModel.onPaymentClick() },
+                    buttonText = if (uiState.isLoading) "ĐANG XỬ LÝ..." else "THANH TOÁN",
+                    enabled = !uiState.isLoading
+                )
+            }
         }
     ) { paddingValues ->
         LazyColumn(
@@ -102,18 +130,26 @@ fun PaymentScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Phần chọn phương thức thanh toán
-                PaymentMethodSelector(
-                    selectedMethod = uiState.selectedPaymentMethod,
-                    onMethodSelected = { viewModel.onPaymentMethodSelected(it) }
-                )
+                if (uiState.isWaitingForPayment) {
+                    EPaymentStatusCard(
+                        method = uiState.selectedPaymentMethod,
+                        qrCodeUrl = uiState.qrCodeUrl,
+                        paymentUrl = uiState.paymentUrl
+                    )
+                } else {
+                    // Phần chọn phương thức thanh toán
+                    PaymentMethodSelector(
+                        selectedMethod = uiState.selectedPaymentMethod,
+                        onMethodSelected = { viewModel.onPaymentMethodSelected(it) }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Thẻ chi tiết thanh toán
                 PaymentDetailsCard(
                     uiState = uiState,
-                    onSelectVoucher = { onSelectVoucher(uiState.totalAmount) }
+                    onSelectVoucher = { if (!uiState.isWaitingForPayment) onSelectVoucher(uiState.totalAmount) }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -270,7 +306,7 @@ fun PaymentDetailsCard(
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             contentScale = ContentScale.Fit,
-                            error = painterResource(id = R.drawable.ic_launcher_background)
+                            error = painterResource(id = R.drawable.popcorn)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
@@ -326,11 +362,124 @@ fun PaymentDetailsCard(
 
             // TỔNG KẾT
             SectionTitle("THANH TOÁN")
+            // Tiền vé (totalAmount trừ concessionTotal)
+            val ticketSubtotal = uiState.totalAmount - uiState.concessionTotal
+            if (ticketSubtotal > 0) {
+                InfoRow("Tiền vé (${uiState.ticketQuantity} ghế)", formatPrice(ticketSubtotal))
+            }
+            if (uiState.concessionTotal > 0) {
+                InfoRow("Tiền bắp nước", formatPrice(uiState.concessionTotal))
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
             InfoRow("Tổng cộng", formatPrice(uiState.totalAmount))
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
             InfoRow("Khuyến mãi", "- ${formatPrice(uiState.discount)}")
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.1f))
             InfoRow("Còn lại", formatPrice(uiState.finalAmount), isHighlight = true)
+        }
+    }
+}
+
+@Composable
+fun EPaymentStatusCard(
+    method: PaymentMethod,
+    qrCodeUrl: String?,
+    paymentUrl: String?
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF2D2D35).copy(alpha = 0.5f),
+        border = BorderStroke(1.dp, CyanBlue.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "ĐANG CHỜ THANH TOÁN ${method.displayName}",
+                color = CyanBlue,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            if (!qrCodeUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = qrCodeUrl,
+                    contentDescription = "QR Code",
+                    modifier = Modifier.size(200.dp).background(Color.White).padding(8.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Quét mã QR để thanh toán",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 13.sp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.QrCode,
+                    contentDescription = null,
+                    tint = CyanBlue,
+                    modifier = Modifier.size(100.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Vui lòng mở ứng dụng để thanh toán",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 13.sp
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().height(2.dp),
+                color = CyanBlue,
+                trackColor = Color.White.copy(alpha = 0.1f)
+            )
+            Text(
+                text = "Vui lòng không đóng màn hình này...",
+                color = Color.White.copy(alpha = 0.4f),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun PaymentWaitingBottomBar(
+    onCancel: () -> Unit,
+    onOpenApp: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFF1C1C22),
+        tonalElevation = 8.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .navigationBarsPadding(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f).height(50.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("HỦY", color = Color.White)
+            }
+            Button(
+                onClick = onOpenApp,
+                modifier = Modifier.weight(1.5f).height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("MỞ ỨNG DỤNG", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
@@ -369,5 +518,59 @@ fun InfoRow(label: String, value: String, isHighlight: Boolean = false) {
             fontSize = if (isHighlight) 16.sp else 14.sp,
             fontWeight = if (isHighlight) FontWeight.Bold else FontWeight.Normal
         )
+    }
+}
+
+@Composable
+fun PaymentBookingBottomBar(
+    totalTickets: Int,
+    totalAmount: Double,
+    onBookClick: () -> Unit,
+    buttonText: String = "TIẾP TỤC",
+    enabled: Boolean = true
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFF1C1C22),
+        tonalElevation = 8.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .navigationBarsPadding(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "$totalTickets vé",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = formatPrice(totalAmount),
+                    color = CyanBlue,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Button(
+                onClick = onBookClick,
+                enabled = enabled,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CyanBlue,
+                    disabledContainerColor = Color.Gray
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(50.dp).padding(start = 16.dp)
+            ) {
+                Text(
+                    text = buttonText,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
+        }
     }
 }
