@@ -17,7 +17,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class AdminReportState(
-    val overview: BusinessOverviewResponse? = null,
+    val businessOverview: BusinessOverviewResponse? = null,
     val dailyRevenue: List<DailyRevenueResponse> = emptyList(),
     val movieRevenue: List<MovieRevenueResponse> = emptyList(),
     val cinemaRevenue: List<CinemaRevenueResponse> = emptyList(),
@@ -52,7 +52,7 @@ class AdminReportViewModel(
                 val cinemas = repository.getCinemaRevenue(fromDate, toDate)
 
                 _state.update { it.copy(
-                    overview = overview?.data,
+                    businessOverview = overview?.data,
                     dailyRevenue = daily?.data ?: emptyList(),
                     movieRevenue = movies?.data ?: emptyList(),
                     cinemaRevenue = cinemas?.data ?: emptyList(),

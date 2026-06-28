@@ -1,6 +1,5 @@
 package com.example.cah_cinema.presentation.user.profile
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,17 +7,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +23,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.cah_cinema.R
 import com.example.cah_cinema.ui.theme.CyanBlue
-import com.example.cah_cinema.util.QrCodeGenerator
 
 @Composable
 fun TicketDetailScreen(
@@ -37,13 +31,6 @@ fun TicketDetailScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val ticket = state.recentTicket
-
-    // Generate QR bitmap từ bookingId — chỉ tính lại khi bookingId thay đổi
-    val qrBitmap = remember(ticket?.bookingId) {
-        ticket?.bookingId?.let { id ->
-            if (id > 0) QrCodeGenerator.generate("BOOKING-$id", size = 512) else null
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -69,7 +56,7 @@ fun TicketDetailScreen(
                     .clickable { onBackClick() }
             )
             Text(
-                text = "Mã vé",
+                text = "Chi tiết vé",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
                 modifier = Modifier.padding(start = 8.dp)
@@ -78,35 +65,34 @@ fun TicketDetailScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Thẻ thông tin vé
         ticket?.let { t ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C22))
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Poster + tên phim
+                Column(modifier = Modifier.padding(20.dp)) {
+                    // Movie Info Section
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp)
+                            .height(130.dp)
                     ) {
                         AsyncImage(
                             model = t.posterUrl,
                             contentDescription = null,
                             modifier = Modifier
-                                .width(80.dp)
+                                .width(90.dp)
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(8.dp)),
                             contentScale = ContentScale.Crop,
                             error = painterResource(id = R.drawable.cinema),
                             placeholder = painterResource(id = R.drawable.cinema)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
                                 text = t.movieTitle,
@@ -123,129 +109,234 @@ fun TicketDetailScreen(
                         }
                     }
 
-                    if (t.seat.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // ── SEATS DETAILS ──────────────────────────────────────────
+                    Text(
+                        text = "Chi tiết ghế (${t.movieFormat}):",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    t.seatItems.forEach { seat ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val seatCode = ('A' + (seat.seatRow.toInt() - 1)).toString() + seat.seatCol.toInt().toString().padStart(2, '0')
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = CyanBlue.copy(alpha = 0.1f)
+                                ) {
+                                    Text(
+                                        text = seatCode,
+                                        color = CyanBlue,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = seat.seatType,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 13.sp
+                                )
+                            }
                             Text(
-                                text = "Ghế:",
-                                color = Color.White.copy(alpha = 0.6f),
+                                text = formatTicketPrice(seat.ticketPrice),
+                                color = Color.White,
                                 fontSize = 13.sp
                             )
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = CyanBlue.copy(alpha = 0.15f)
+                        }
+                    }
+
+                    // ── FOOD DETAILS ───────────────────────────────────────────
+                    if (t.foods.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "Bắp nước:",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        t.foods.forEach { food ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                AsyncImage(
+                                    model = food.foodImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color.White.copy(alpha = 0.05f)),
+                                    contentScale = ContentScale.Fit,
+                                    error = painterResource(id = R.drawable.popcorn)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = food.foodName,
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = "${formatTicketPrice(food.unitPrice)} x ${food.quantity}",
+                                        color = Color.White.copy(alpha = 0.5f),
+                                        fontSize = 11.sp
+                                    )
+                                }
                                 Text(
-                                    text = t.seat,
-                                    color = CyanBlue,
-                                    fontWeight = FontWeight.Bold,
+                                    text = formatTicketPrice(food.unitPrice * food.quantity),
+                                    color = Color.White,
                                     fontSize = 13.sp,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
                     }
 
-                    if (t.totalPrice > 0) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // ── BILLING SUMMARY ────────────────────────────────────────
+                    val ticketsTotal = t.seatItems.sumOf { it.ticketPrice }
+                    
+                    PriceDetailRow(label = "Tiền vé:", value = formatTicketPrice(ticketsTotal))
+                    if (t.foodTotalPrice > 0) {
+                        PriceDetailRow(label = "Tiền bắp nước:", value = formatTicketPrice(t.foodTotalPrice))
+                    }
+                    if (t.discountAmount > 0) {
+                        PriceDetailRow(label = "Giảm giá:", value = "- ${formatTicketPrice(t.discountAmount)}", color = CyanBlue)
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Tổng thanh toán:",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = formatTicketPrice(t.totalPrice),
+                            color = CyanBlue,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 22.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Booking ID and Status section
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Mã đặt vé",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "#${t.bookingId}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        
+                        // Status handling
+                        val bookingStatus = state.allInvoices.find { it.bookingId == t.bookingId }?.bookingStatus
+                        val (statusLabel, statusColor) = when (bookingStatus) {
+                            "PAID" -> "ĐÃ THANH TOÁN" to Color(0xFF4CAF50)
+                            "CHECKED_IN" -> "ĐÃ CHECK-IN" to Color(0xFF00E5FF)
+                            "REFUNDED" -> "ĐÃ HOÀN TIỀN" to Color.Gray
+                            else -> "N/A" to Color.White.copy(alpha = 0.3f)
+                        }
+                        
+                        Surface(
+                            color = statusColor.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(4.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
                         ) {
                             Text(
-                                text = "Tổng tiền:",
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 13.sp
-                            )
-                            Text(
-                                text = formatTicketPrice(t.totalPrice),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
+                                text = statusLabel,
+                                color = statusColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text(
+                text = "Vui lòng xuất trình mã đặt vé hoặc mã QR trong Email của bạn tại quầy để nhận vé vật lý.",
+                color = Color.White.copy(alpha = 0.4f),
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp),
+                lineHeight = 18.sp
+            )
+            
+            Spacer(modifier = Modifier.height(40.dp))
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Hướng dẫn
-        Text(
-            text = "Xuất trình QR code này tại quầy để nhận vé",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = Color.Red,
-                fontWeight = FontWeight.Bold
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // QR Code
-        Surface(
-            modifier = Modifier.size(220.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = Color.White
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (qrBitmap != null) {
-                    Image(
-                        bitmap = qrBitmap.asImageBitmap(),
-                        contentDescription = "QR Code vé",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    // Placeholder khi chưa có bookingId
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ticket_icon),
-                            contentDescription = null,
-                            tint = Color.Black.copy(alpha = 0.3f),
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Chưa có mã vé",
-                            color = Color.Black.copy(alpha = 0.5f),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Mã booking
-        ticket?.let { t ->
-            if (t.bookingId > 0) {
-                Text(
-                    text = "Mã đặt vé: #${t.bookingId}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
+@Composable
+private fun PriceDetailRow(
+    label: String,
+    value: String,
+    color: Color = Color.White.copy(alpha = 0.6f)
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = label, color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+        Text(text = value, color = color, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -256,18 +347,18 @@ private fun TicketInfoRow(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = 1.dp)
+        modifier = Modifier.padding(vertical = 2.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = CyanBlue,
-            modifier = Modifier.size(14.dp)
+            modifier = Modifier.size(16.dp)
         )
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodySmall,
             color = Color.White.copy(alpha = 0.7f),
             maxLines = 1
         )

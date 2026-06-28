@@ -2,9 +2,9 @@ package com.example.cah_cinema.presentation.user.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.example.cah_cinema.domain.model.Movie
 import com.example.cah_cinema.domain.model.Promotion
-import com.example.cah_cinema.util.ImageUrls
 import com.example.cah_cinema.data.model.MovieListItem
 import com.example.cah_cinema.data.remote.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,27 +25,37 @@ data class HomeState(
 
 class HomeViewModel : ViewModel() {
 
-    private val dummyPromotions = listOf(
-        Promotion(
-            id = "1",
-            title = "C'SCHOOL | ƯU ĐÃI GIÁ VÉ TỪ 45K DÀNH RIÊNG CHO HSSV/U22/GIÁO VIÊN",
-            description = "Ưu đãi giá vé 45K dành cho HSSV, U22 và Giáo viên cả tuần",
-            imageUrl = ImageUrls.PROMOTION_SCHOOL
-        ),
-        Promotion(
-            id = "2",
-            title = "HAPPY DAY | THỨ 2 - ĐỒNG GIÁ 45K CHO MỌI SUẤT CHIẾU",
-            description = "Thứ 2 hàng tuần, đồng giá vé 45K / vé 2D cho mọi khách hàng tại Cinestar",
-            imageUrl = ImageUrls.PROMOTION_HAPPY_DAY
-        )
-    )
-
-    private val _state = MutableStateFlow(HomeState(promotions = dummyPromotions))
+    private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
     init {
         fetchFeaturedMovies()
         loadUserProfile()
+        loadPromotions()
+    }
+
+    private fun loadPromotions() {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.apiService.getPublicPromotions(page = 0, size = 9)
+                if (response.isSuccessful) {
+                    val items = response.body()?.data?.content ?: emptyList()
+                    val promotions = items.map { item ->
+                        Promotion(
+                            id = item.id.toString(),
+                            title = item.title,
+                            description = item.description ?: "",
+                            imageUrl = item.imageUrl ?: ""
+                        )
+                    }
+                    _state.update { it.copy(promotions = promotions) }
+                } else {
+                    Log.w("HomeViewModel", "getPublicPromotions failed: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error loading promotions", e)
+            }
+        }
     }
 
     private fun loadUserProfile() {

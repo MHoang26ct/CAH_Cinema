@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,9 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cah_cinema.ui.theme.CyanBlue
@@ -285,4 +289,176 @@ fun AdminTextField(
             disabledBorderColor = Color.White.copy(alpha = 0.05f)
         )
     )
+}
+
+/**
+ * Card container dùng để bọc các chart trong Dashboard admin.
+ */
+@Composable
+fun AdminChartCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier,
+        color = Color(0xFF1C1C22),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            content()
+        }
+    }
+}
+
+/**
+ * Biểu đồ cột (Bar Chart) đơn giản dựa trên Canvas.
+ */
+@Composable
+fun SimpleBarChart(
+    data: List<Pair<String, Double>>,
+    color: Color = CyanBlue,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth().height(180.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Không có dữ liệu", color = Color.White.copy(alpha = 0.4f))
+        }
+        return
+    }
+
+    val maxValue = data.maxOf { it.second }.coerceAtLeast(1.0)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(160.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            data.forEach { (_, value) ->
+                val fraction = (value / maxValue).toFloat().coerceIn(0.02f, 1f)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(fraction)
+                            .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                            .background(color)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            data.forEach { (label, _) ->
+                Text(
+                    text = label,
+                    color = Color.White.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Biểu đồ tròn (Pie Chart) đơn giản dựa trên Canvas + drawArc.
+ */
+@Composable
+fun SimplePieChart(
+    data: List<Pair<String, Double>>,
+    colors: List<Color>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth().height(180.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Không có dữ liệu", color = Color.White.copy(alpha = 0.4f))
+        }
+        return
+    }
+
+    val total = data.sumOf { it.second }.coerceAtLeast(1.0)
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Vẽ Pie chart bằng Canvas
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier.size(140.dp)
+        ) {
+            var startAngle = -90f
+            data.forEachIndexed { index, (_, value) ->
+                val sweep = ((value / total) * 360f).toFloat()
+                drawArc(
+                    color = colors.getOrElse(index) { Color.Gray },
+                    startAngle = startAngle,
+                    sweepAngle = sweep,
+                    useCenter = true
+                )
+                // Đường viền trắng mỏng giữa các phần
+                drawArc(
+                    color = Color(0xFF13131A),
+                    startAngle = startAngle,
+                    sweepAngle = sweep,
+                    useCenter = true,
+                    style = Stroke(width = 2f)
+                )
+                startAngle += sweep
+            }
+        }
+
+        // Legend
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            data.forEachIndexed { index, (label, _) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(
+                                colors.getOrElse(index) { Color.Gray },
+                                CircleShape
+                            )
+                    )
+                    Text(
+                        text = label,
+                        color = Color.White.copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
 }

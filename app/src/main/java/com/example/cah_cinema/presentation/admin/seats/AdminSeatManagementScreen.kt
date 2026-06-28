@@ -69,12 +69,15 @@ fun rowIndexToLabel(seatRowIndex: Int): String {
 @Composable
 fun AdminSeatManagementScreen(
     roomId: Long,
+    cinemaId: Long = 0L,
     onBack: () -> Unit
 ) {
     val viewModel: AdminSeatManagementViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                val savedStateHandle = androidx.lifecycle.SavedStateHandle(mapOf("roomId" to roomId))
+                val savedStateHandle = androidx.lifecycle.SavedStateHandle(
+                    mapOf("roomId" to roomId, "cinemaId" to cinemaId)
+                )
                 return AdminSeatManagementViewModel(savedStateHandle) as T
             }
         }

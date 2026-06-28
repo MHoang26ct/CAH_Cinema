@@ -1,5 +1,6 @@
 package com.example.cah_cinema.presentation.user.profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -192,21 +193,23 @@ fun InvoiceCard(
                 // Status badge
                 val (statusText, statusColor) = when (invoice.bookingStatus) {
                     "PAID" -> "ĐÃ THANH TOÁN" to Color(0xFF4CAF50)
-                    "CHECKED_IN" -> "ĐÃ CHECK-IN" to CyanBlue
+                    "CHECKED_IN" -> "ĐÃ CHECK-IN" to Color(0xFF00E5FF)
                     "PENDING" -> "CHỜ THANH TOÁN" to Color(0xFFFF9800)
                     "CANCELLED" -> "ĐÃ HỦY" to Color.Red
+                    "REFUNDED" -> "ĐÃ HOÀN TIỀN" to Color.Gray
                     else -> (invoice.bookingStatus ?: "N/A") to Color.White.copy(alpha = 0.5f)
                 }
                 Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = statusColor.copy(alpha = 0.15f)
+                    shape = RoundedCornerShape(6.dp),
+                    color = statusColor.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
                 ) {
                     Text(
                         text = statusText,
                         color = statusColor,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -214,7 +217,7 @@ fun InvoiceCard(
                     text = formatInvoicePrice(invoice.totalPrice),
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
+                    fontSize = 14.sp
                 )
             }
         }

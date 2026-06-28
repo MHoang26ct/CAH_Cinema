@@ -84,7 +84,7 @@ fun AdminCinemaManagementScreen(
         onEditClick = { editingCinema = it },
         onAddRoomClick = { showAddRoomDialog = it },
         onDeleteRoom = { roomId, cinemaId -> viewModel.deleteRoom(roomId, cinemaId) },
-        onManageSeats = { roomId -> onNavigate(Screen.AdminSeatManagement.createRoute(roomId)) }
+        onManageSeats = { roomId, cinemaId -> onNavigate(Screen.AdminSeatManagement.createRoute(roomId, cinemaId)) }
     )
 
     if (showAddDialog) {
@@ -123,7 +123,7 @@ fun AdminCinemaManagementScreen(
                 viewModel.createRoom(showAddRoomDialog!!, roomName) { newRoomId ->
                     showAddRoomDialog = null
                     // Navigate thẳng sang thiết kế sơ đồ ghế cho phòng vừa tạo
-                    onNavigate(Screen.AdminSeatManagement.createRoute(newRoomId))
+                    onNavigate(Screen.AdminSeatManagement.createRoute(newRoomId, showAddRoomDialog!!))
                 }
             }
         )
@@ -140,7 +140,7 @@ fun AdminCinemaManagementContent(
     onEditClick: (CinemaItem) -> Unit,
     onAddRoomClick: (Long) -> Unit,
     onDeleteRoom: (Long, Long) -> Unit = { _, _ -> },
-    onManageSeats: (Long) -> Unit
+    onManageSeats: (Long, Long) -> Unit  // (roomId, cinemaId)
 ) {
     AdminScaffold(
         title = "Quản lý Rạp",
@@ -196,7 +196,7 @@ fun AdminCinemaManagementContent(
                             onDelete = { onDeleteCinema(cinema.id) },
                             onAddRoom = { onAddRoomClick(cinema.id) },
                             onDeleteRoom = { roomId -> onDeleteRoom(roomId, cinema.id) },
-                            onManageSeats = onManageSeats
+                            onManageSeats = { roomId -> onManageSeats(roomId, cinema.id) }
                         )
                     }
                 }
@@ -369,7 +369,7 @@ fun CinemaCard(
     onDelete: () -> Unit,
     onAddRoom: () -> Unit,
     onDeleteRoom: (Long) -> Unit = {},
-    onManageSeats: (Long) -> Unit
+    onManageSeats: (Long) -> Unit  // roomId only — cinemaId injected at call site
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -487,7 +487,7 @@ fun AdminCinemaManagementPreview() {
             onEditClick = {},
             onAddRoomClick = {},
             onDeleteRoom = { _, _ -> },
-            onManageSeats = {}
+            onManageSeats = { _, _ -> }
         )
     }
 }

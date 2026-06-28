@@ -84,10 +84,25 @@ data class CheckInRequest(
 
 data class CheckInResponse(
     @SerializedName("ticketId") val ticketId: Long,
+    @SerializedName("bookingId") val bookingId: Long,
     @SerializedName("movieTitle") val movieTitle: String,
     @SerializedName("cinemaName") val cinemaName: String,
     @SerializedName("roomName") val roomName: String,
-    @SerializedName("startTime") val startTime: String,
-    @SerializedName("seatName") val seatName: String,
-    @SerializedName("checkedInAt") val checkedInAt: String
+    @SerializedName("showtimeStart") val startTime: String,
+    @SerializedName("seatName") val seatName: String
+)
+
+/** Request tạo booking tại quầy (staff bán vé trực tiếp, thanh toán tiền mặt) */
+data class StaffCreateBookingRequest(
+    @SerializedName("showtimeId") val showtimeId: Long,
+    @SerializedName("seatIds") val seatIds: List<Long>,
+    @SerializedName("paymentMethod") val paymentMethod: String = "CASH",
+    @SerializedName("voucherId") val voucherId: Long? = null,
+    @SerializedName("foodItems") val foodItems: List<FoodOrderItemRequest>? = null
+)
+
+/** Response sau khi staff xác nhận thanh toán cash */
+data class StaffConfirmPaymentRequest(
+    @SerializedName("paymentRef") val paymentRef: String = "CASH",
+    @SerializedName("gateway") val gateway: String = "CASH"
 )

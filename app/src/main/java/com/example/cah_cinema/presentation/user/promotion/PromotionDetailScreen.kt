@@ -64,74 +64,80 @@ fun PromotionDetailScreen(
             }
         }
     ) { paddingValues ->
-        state.promotion?.let { promotion ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp)
-            ) {
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    AsyncImage(
-                        model = promotion.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(240.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = promotion.title,
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 26.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = promotion.description,
-                        color = TextGray,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                if (promotion.conditions.isNotEmpty()) {
+        if (state.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = CyanBlue)
+            }
+        } else {
+            state.promotion?.let { promotion ->
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(horizontal = 16.dp)
+                ) {
                     item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        AsyncImage(
+                            model = promotion.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(240.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Điều kiện",
+                            text = promotion.title,
                             color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 26.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    items(promotion.conditions) { condition ->
-                        BulletItem(text = condition)
-                    }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
-                }
-
-                if (promotion.notes.isNotEmpty()) {
-                    item {
                         Text(
-                            text = "Lưu ý",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
+                            text = promotion.description,
+                            color = TextGray,
+                            fontSize = 14.sp
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
-                    items(promotion.notes) { note ->
-                        BulletItem(text = note)
+
+                    if (promotion.conditions.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Điều kiện",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        items(promotion.conditions) { condition ->
+                            BulletItem(text = condition)
+                        }
+                        item { Spacer(modifier = Modifier.height(24.dp)) }
                     }
-                }
-                
-                item {
-                    Spacer(modifier = Modifier.height(32.dp))
+
+                    if (promotion.notes.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Lưu ý",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        items(promotion.notes) { note ->
+                            BulletItem(text = note)
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
                 }
             }
         }

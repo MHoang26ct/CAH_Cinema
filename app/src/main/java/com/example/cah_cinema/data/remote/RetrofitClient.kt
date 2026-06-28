@@ -37,7 +37,6 @@ object RetrofitClient {
     }
 
     private val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(loggingInterceptor)
         .addInterceptor { chain ->
             val requestBuilder = chain.request().newBuilder()
             token?.let {
@@ -46,6 +45,9 @@ object RetrofitClient {
             }
             chain.proceed(requestBuilder.build())
         }
+        // Dùng addNetworkInterceptor thay vì addInterceptor để logging không throw
+        // EOFException khi server gửi chunked + Connection: close bị truncate
+        .addNetworkInterceptor(loggingInterceptor)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)

@@ -54,7 +54,7 @@ data class PaymentUiState(
     val totalAmount: Double = 0.0,
     val finalAmount: Double = 0.0,
 
-    val selectedPaymentMethod: PaymentMethod = PaymentMethod.CASH,
+    val selectedPaymentMethod: PaymentMethod = PaymentMethod.VNPAY,
 
     // Booking result
     val bookingId: Long? = null,
@@ -84,9 +84,7 @@ data class ConcessionSummaryItem(
 )
 
 enum class PaymentMethod(val displayName: String) {
-    CASH("CASH"),
-    VNPAY("VNPAY"),
-    MOMO("MOMO")
+    VNPAY("VNPAY")
 }
 
 class PaymentViewModel(
@@ -309,30 +307,6 @@ class PaymentViewModel(
 
                 // Bước 2: Xử lý theo phương thức thanh toán
                 when (_uiState.value.selectedPaymentMethod) {
-                    PaymentMethod.CASH -> {
-                        // Demo: Cash auto-confirm (Thực tế BE staff xác nhận)
-                        val confirmRequest = ConfirmPaymentRequest(
-                            paymentRef = "CASH-$bookingId-${System.currentTimeMillis()}",
-                            gateway = "CASH"
-                        )
-                        RetrofitClient.apiService.confirmPaymentManual(bookingId, confirmRequest)
-                        _uiState.update { state -> state.copy(isPaymentSuccessful = true, isLoading = false) }
-                    }
-                    PaymentMethod.MOMO -> {
-                        val momoResp = RetrofitClient.apiService.createMoMoPayment(bookingId, MoMoPaymentRequest(requestId = UUID.randomUUID().toString()))
-                        if (momoResp.isSuccessful && momoResp.body()?.code == 200) {
-                            val data = momoResp.body()?.data
-                            _uiState.update { state -> state.copy(
-                                paymentUrl = data?.payUrl,
-                                qrCodeUrl = data?.qrCodeUrl,
-                                isWaitingForPayment = true,
-                                isLoading = false
-                            ) }
-                            startStatusPolling(bookingId)
-                        } else {
-                            _uiState.update { state -> state.copy(isLoading = false, errorMessage = "Lỗi kết nối ví MoMo") }
-                        }
-                    }
                     PaymentMethod.VNPAY -> {
                         val vnpayResp = RetrofitClient.apiService.createVNPayPayment(bookingId, VNPayPaymentRequest(requestId = UUID.randomUUID().toString()))
                         if (vnpayResp.isSuccessful && vnpayResp.body()?.code == 200) {

@@ -22,6 +22,12 @@ data class TicketInfo(
     val bookingId: Long = 0,
     val roomName: String = "",
     val totalPrice: Double = 0.0,
+    val foods: List<com.example.cah_cinema.data.model.InvoiceFood> = emptyList(),
+    val discountAmount: Double = 0.0,
+    val foodTotalPrice: Double = 0.0,
+    val movieFormat: String = "2D",
+    val qrToken: String? = null,
+    val seatItems: List<com.example.cah_cinema.data.model.InvoiceSeat> = emptyList()
 )
 
 data class ProfileState(
@@ -97,7 +103,13 @@ class ProfileViewModel : ViewModel() {
                                         posterUrl = invoice.moviePosterUrl,
                                         bookingId = invoice.bookingId,
                                         roomName = invoice.roomName ?: "",
-                                        totalPrice = invoice.totalPrice
+                                        totalPrice = invoice.totalPrice,
+                                        foods = invoice.foods ?: emptyList(),
+                                        discountAmount = invoice.discountAmount ?: 0.0,
+                                        foodTotalPrice = invoice.foodTotalPrice ?: 0.0,
+                                        movieFormat = invoice.movieFormat ?: "2D",
+                                        qrToken = invoice.qrToken ?: invoice.seats?.firstOrNull()?.qrToken,
+                                        seatItems = invoice.seats ?: emptyList()
                                     )
                                 },
                                 isLoading = false
@@ -155,7 +167,13 @@ class ProfileViewModel : ViewModel() {
                     posterUrl = invoice.moviePosterUrl,
                     bookingId = invoice.bookingId,
                     roomName = invoice.roomName ?: "",
-                    totalPrice = invoice.totalPrice
+                    totalPrice = invoice.totalPrice,
+                    foods = invoice.foods ?: emptyList(),
+                    discountAmount = invoice.discountAmount ?: 0.0,
+                    foodTotalPrice = invoice.foodTotalPrice ?: 0.0,
+                    movieFormat = invoice.movieFormat ?: "2D",
+                    qrToken = invoice.qrToken ?: invoice.seats?.firstOrNull()?.qrToken,
+                    seatItems = invoice.seats ?: emptyList()
                 )
             )
         }

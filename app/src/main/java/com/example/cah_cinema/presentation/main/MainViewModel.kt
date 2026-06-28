@@ -30,10 +30,10 @@ class MainViewModel : ViewModel() {
                     val response = RetrofitClient.apiService.getMyProfile()
                     if (response.isSuccessful && response.body()?.code == 200) {
                         val role = response.body()?.data?.user?.role ?: "ROLE_USER"
-                        if (role == "ROLE_ADMIN") {
-                            _startDestination.value = Screen.AdminDashboard.route
-                        } else {
-                            _startDestination.value = Screen.Home.route
+                        when (role) {
+                            "ROLE_ADMIN" -> _startDestination.value = Screen.AdminDashboard.route
+                            "ROLE_STAFF" -> _startDestination.value = Screen.StaffDashboard.route
+                            else -> _startDestination.value = Screen.Home.route
                         }
                     } else {
                         // Token hết hạn hoặc không hợp lệ

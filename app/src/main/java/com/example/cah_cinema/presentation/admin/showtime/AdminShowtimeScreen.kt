@@ -9,16 +9,20 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +41,8 @@ fun AdminShowtimeScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var showMaintenanceDialog by remember { mutableStateOf(false) }
+    var showSeatsDialog by remember { mutableStateOf<ShowtimeInfo?>(null) }
     var editingShowtimePair by remember { mutableStateOf<Pair<Long, ShowtimeInfo>?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -46,6 +52,13 @@ fun AdminShowtimeScreen(
             viewModel.clearError()
         }
     }
+    
+    LaunchedEffect(state.successMessage) {
+        state.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
+    }
 
     AdminShowtimeContent(
         state = state,
@@ -53,6 +66,11 @@ fun AdminShowtimeScreen(
         onNavigate = onNavigate,
         onDeleteShowtime = { viewModel.deleteShowtime(it) },
         onAddClick = { showAddDialog = true },
+        onMaintenanceClick = { showMaintenanceDialog = true },
+        onViewSeatsClick = { 
+            showSeatsDialog = it
+            viewModel.loadShowtimeSeats(it.id)
+        },
         onEditClick = { movieId, info -> editingShowtimePair = movieId to info }
     )
 
@@ -68,6 +86,29 @@ fun AdminShowtimeScreen(
                     showAddDialog = false
                 }
             }
+        )
+    }
+
+    if (showMaintenanceDialog) {
+        MaintenanceDialog(
+            cinemas = state.cinemas,
+            rooms = state.rooms,
+            onCinemaSelected = { viewModel.loadRooms(it) },
+            onDismiss = { showMaintenanceDialog = false },
+            onConfirm = { roomId, from, to, reason ->
+                viewModel.cancelShowtimesByRoom(roomId, from, to, reason) {
+                    showMaintenanceDialog = false
+                }
+            }
+        )
+    }
+
+    if (showSeatsDialog != null) {
+        ShowtimeSeatsDialog(
+            showtime = showSeatsDialog!!,
+            seats = state.showtimeSeats,
+            isLoading = state.isLoadingSeats,
+            onDismiss = { showSeatsDialog = null }
         )
     }
 
@@ -96,6 +137,8 @@ fun AdminShowtimeContent(
     onNavigate: (String) -> Unit,
     onDeleteShowtime: (Long) -> Unit,
     onAddClick: () -> Unit,
+    onMaintenanceClick: () -> Unit,
+    onViewSeatsClick: (ShowtimeInfo) -> Unit = {},
     onEditClick: (Long, ShowtimeInfo) -> Unit = { _, _ -> }
 ) {
     AdminScaffold(
@@ -120,16 +163,29 @@ fun AdminShowtimeContent(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = onAddClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("TẠO LỊCH", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = onMaintenanceClick,
+                        border = BorderStroke(1.dp, Color(0xFFFFA500)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Build, contentDescription = null, tint = Color(0xFFFFA500), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("BẢO TRÌ PHÒNG", color = Color(0xFFFFA500), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+
+                    Button(
+                        onClick = onAddClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = CyanBlue),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("TẠO LỊCH", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+                    }
                 }
             }
 
@@ -157,7 +213,8 @@ fun AdminShowtimeContent(
                             ShowtimeItem(
                                 showtime = showtime, 
                                 onEdit = { onEditClick(movieItem.movie.id, showtime) },
-                                onDelete = { onDeleteShowtime(showtime.id) }
+                                onDelete = { onDeleteShowtime(showtime.id) },
+                                onViewSeats = { onViewSeatsClick(showtime) }
                             )
                         }
                     }
@@ -165,6 +222,122 @@ fun AdminShowtimeContent(
             }
         }
     }
+}
+
+@Composable
+fun MaintenanceDialog(
+    cinemas: List<CinemaItem>,
+    rooms: List<RoomItem>,
+    onCinemaSelected: (Long) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: (Long, String, String, String) -> Unit
+) {
+    var selectedCinema by remember { mutableStateOf<CinemaItem?>(null) }
+    var selectedRoom by remember { mutableStateOf<RoomItem?>(null) }
+    
+    var fromDay by remember { mutableStateOf(DateTimeUtils.getTodayDay()) }
+    var fromMonth by remember { mutableStateOf(DateTimeUtils.getTodayMonth()) }
+    var fromYear by remember { mutableStateOf(DateTimeUtils.getTodayYear()) }
+    
+    var toDay by remember { mutableStateOf(DateTimeUtils.getTodayDay()) }
+    var toMonth by remember { mutableStateOf(DateTimeUtils.getTodayMonth()) }
+    var toYear by remember { mutableStateOf(DateTimeUtils.getTodayYear()) }
+    
+    var reason by remember { mutableStateOf("Bảo trì định kỳ / Sửa chữa sơ đồ ghế") }
+
+    var cinemaExpanded by remember { mutableStateOf(false) }
+    var roomExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Column {
+                Text("Bảo trì / Hủy lịch hàng loạt", color = Color(0xFFFFA500), fontWeight = FontWeight.Bold)
+                Text("Dùng khi cần sửa sơ đồ ghế hoặc bảo trì phòng", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // CHỌN RẠP
+                AdminDropdownSelector(
+                    label = "Rạp",
+                    selectedValue = selectedCinema?.name ?: "Chọn rạp",
+                    expanded = cinemaExpanded,
+                    onExpandedChange = { cinemaExpanded = it },
+                    items = cinemas,
+                    itemLabel = { it.name },
+                    onItemSelected = { 
+                        selectedCinema = it
+                        selectedRoom = null
+                        onCinemaSelected(it.id) 
+                    }
+                )
+                
+                // CHỌN PHÒNG
+                AdminDropdownSelector(
+                    label = "Phòng chiếu",
+                    selectedValue = selectedRoom?.name ?: "Chọn phòng",
+                    expanded = roomExpanded,
+                    onExpandedChange = { roomExpanded = it },
+                    items = rooms,
+                    itemLabel = { it.name },
+                    onItemSelected = { selectedRoom = it },
+                    enabled = selectedCinema != null
+                )
+
+                // NGÀY BẮT ĐẦU
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Từ ngày", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TimeInputField(value = fromDay, onValueChange = { if(it.length <= 2) fromDay = it }, label = "Ngày", modifier = Modifier.weight(1f))
+                        TimeInputField(value = fromMonth, onValueChange = { if(it.length <= 2) fromMonth = it }, label = "Tháng", modifier = Modifier.weight(1f))
+                        TimeInputField(value = fromYear, onValueChange = { if(it.length <= 4) fromYear = it }, label = "Năm", modifier = Modifier.weight(1.5f))
+                    }
+                }
+
+                // NGÀY KẾT THÚC
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Đến hết ngày", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TimeInputField(value = toDay, onValueChange = { if(it.length <= 2) toDay = it }, label = "Ngày", modifier = Modifier.weight(1f))
+                        TimeInputField(value = toMonth, onValueChange = { if(it.length <= 2) toMonth = it }, label = "Tháng", modifier = Modifier.weight(1f))
+                        TimeInputField(value = toYear, onValueChange = { if(it.length <= 4) toYear = it }, label = "Năm", modifier = Modifier.weight(1.5f))
+                    }
+                }
+
+                AdminTextField(value = reason, onValueChange = { reason = it }, label = "Lý do hủy lịch")
+                
+                Text(
+                    "Lưu ý: Thao tác này sẽ hủy TOÀN BỘ suất chiếu của phòng trong khoảng thời gian trên. Hệ thống sẽ tự động hoàn tiền cho khách đã mua vé.",
+                    color = Color.Red.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (selectedRoom != null) {
+                        val fromDate = "$fromYear-${fromMonth.padStart(2, '0')}-${fromDay.padStart(2, '0')}"
+                        val toDate = "$toYear-${toMonth.padStart(2, '0')}-${toDay.padStart(2, '0')}"
+                        onConfirm(selectedRoom!!.id, fromDate, toDate, reason)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                enabled = selectedRoom != null && reason.isNotBlank()
+            ) {
+                Text("XÁC NHẬN HỦY", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("HỦY", color = Color.White.copy(alpha = 0.6f)) }
+        },
+        containerColor = Color(0xFF21212B)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -549,7 +722,12 @@ fun TimeInputField(
 }
 
 @Composable
-fun ShowtimeItem(showtime: ShowtimeInfo, onEdit: () -> Unit = {}, onDelete: () -> Unit) {
+fun ShowtimeItem(
+    showtime: ShowtimeInfo, 
+    onEdit: () -> Unit = {}, 
+    onDelete: () -> Unit,
+    onViewSeats: () -> Unit = {}
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color(0xFF1C1C22),
@@ -575,6 +753,9 @@ fun ShowtimeItem(showtime: ShowtimeInfo, onEdit: () -> Unit = {}, onDelete: () -
                 Text("Định dạng: ${showtime.format} | Trạng thái: ${showtime.status}", color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
             }
             Row {
+                IconButton(onClick = onViewSeats) {
+                    Icon(Icons.Default.EventSeat, contentDescription = "View Seats", tint = CyanBlue.copy(alpha = 0.8f))
+                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White.copy(alpha = 0.4f))
                 }
@@ -583,6 +764,84 @@ fun ShowtimeItem(showtime: ShowtimeInfo, onEdit: () -> Unit = {}, onDelete: () -
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ShowtimeSeatsDialog(
+    showtime: ShowtimeInfo,
+    seats: List<SeatItem>,
+    isLoading: Boolean,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                "Sơ đồ ghế: ${showtime.roomName} (${showtime.startTime.substringAfter("T").substring(0, 5)})",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        },
+        text = {
+            Box(modifier = Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.Center) {
+                if (isLoading) {
+                    CircularProgressIndicator(color = CyanBlue)
+                } else if (seats.isEmpty()) {
+                    Text("Không có dữ liệu ghế", color = Color.White.copy(alpha = 0.5f))
+                } else {
+                    // Hiển thị sơ đồ ghế đơn giản dạng text hoặc grid thu nhỏ
+                    val maxRow = if (seats.isNotEmpty()) seats.maxOf { it.row }.toInt() else 0
+                    val maxCol = if (seats.isNotEmpty()) seats.maxOf { it.col }.toInt() else 0
+                    
+                    Column(
+                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        for (r in 1..maxRow) {
+                            Row {
+                                for (c in 1..maxCol) {
+                                    val seat = seats.find { it.row.toInt() == r && it.col.toInt() == c }
+                                    val color = when (seat?.occupancyStatus) {
+                                        "SOLD" -> Color.Red
+                                        "LOCKED" -> Color.Yellow
+                                        "AVAILABLE" -> CyanBlue
+                                        else -> Color.Transparent
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .padding(1.dp)
+                                            .background(color, RoundedCornerShape(2.dp))
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            LegendItem("Đã bán", Color.Red)
+                            LegendItem("Đang giữ", Color.Yellow)
+                            LegendItem("Trống", CyanBlue)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("ĐÓNG", color = CyanBlue) }
+        },
+        containerColor = Color(0xFF21212B)
+    )
+}
+
+@Composable
+fun LegendItem(label: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(8.dp).background(color, RoundedCornerShape(2.dp)))
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp)
     }
 }
 
@@ -607,7 +866,8 @@ fun AdminShowtimePreview() {
             snackbarHostState = SnackbarHostState(),
             onNavigate = {},
             onDeleteShowtime = {},
-            onAddClick = {}
+            onAddClick = {},
+            onMaintenanceClick = {}
         )
     }
 }

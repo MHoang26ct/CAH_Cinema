@@ -39,7 +39,8 @@ data class Invoice(
     @SerializedName("roomName") val roomName: String? = null,
     @SerializedName("seats") val seats: List<InvoiceSeat>? = null,
     @SerializedName("foods") val foods: List<InvoiceFood>? = null,
-    @SerializedName("foodTotalPrice") val foodTotalPrice: Double? = null
+    @SerializedName("foodTotalPrice") val foodTotalPrice: Double? = null,
+    @SerializedName("qrToken") val qrToken: String? = null
 )
 
 data class InvoiceSeat(
@@ -47,7 +48,8 @@ data class InvoiceSeat(
     @SerializedName("seatRow") val seatRow: Double,
     @SerializedName("seatCol") val seatCol: Double,
     @SerializedName("seatType") val seatType: String,
-    @SerializedName("ticketPrice") val ticketPrice: Double
+    @SerializedName("ticketPrice") val ticketPrice: Double,
+    @SerializedName("qrToken") val qrToken: String? = null
 )
 
 data class InvoiceFood(

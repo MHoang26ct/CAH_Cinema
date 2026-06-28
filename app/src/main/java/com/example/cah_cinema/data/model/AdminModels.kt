@@ -4,12 +4,16 @@ import com.google.gson.annotations.SerializedName
 
 // Report Models
 data class BusinessOverviewResponse(
+    @SerializedName("from") val from: String? = null,
+    @SerializedName("to") val to: String? = null,
     @SerializedName("totalRevenue") val totalRevenue: Double,
     @SerializedName("ticketRevenue") val ticketRevenue: Double,
     @SerializedName("foodRevenue") val foodRevenue: Double,
     @SerializedName("totalTicketsSold") val totalTicketsSold: Int,
     @SerializedName("totalBookingsPaid") val totalBookingsPaid: Int,
-    @SerializedName("activeMovies") val activeMovies: Int
+    @SerializedName("totalDiscount") val totalDiscount: Double = 0.0,
+    @SerializedName("averageOrderValue") val averageOrderValue: Double = 0.0,
+    @SerializedName("activeMovies") val activeMovies: Int = 0
 )
 
 data class DailyRevenueResponse(
@@ -21,15 +25,15 @@ data class DailyRevenueResponse(
 data class MovieRevenueResponse(
     @SerializedName("movieId") val movieId: Long,
     @SerializedName("movieTitle") val movieTitle: String,
-    @SerializedName("revenue") val revenue: Double,
-    @SerializedName("ticketCount") val ticketCount: Int
+    @SerializedName("ticketRevenue", alternate = ["revenue"]) val ticketRevenue: Double,
+    @SerializedName("ticketsSold", alternate = ["ticketCount"]) val ticketsSold: Int
 )
 
 data class CinemaRevenueResponse(
     @SerializedName("cinemaId") val cinemaId: Long,
     @SerializedName("cinemaName") val cinemaName: String,
-    @SerializedName("revenue") val revenue: Double,
-    @SerializedName("ticketCount") val ticketCount: Int
+    @SerializedName("ticketRevenue", alternate = ["revenue"]) val ticketRevenue: Double,
+    @SerializedName("ticketsSold", alternate = ["ticketCount"]) val ticketsSold: Int
 )
 
 // Movie Admin Models
